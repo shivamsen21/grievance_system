@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Smart City Report</title>
+  <meta name="description" content="Submit and track civic grievances in real-time." />
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* ── Camera Permission Modal ─────────────────────── */
+    #camera-permission-overlay {
+      position: fixed; inset: 0;
+      background: rgba(3,7,18,0.8);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    #camera-permission-overlay.show { opacity: 1; pointer-events: all; }
+    .cam-modal {
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 1.5rem;
+      padding: 2.5rem 2rem 2rem;
+      max-width: 22rem; width: 90%;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      transform: translateY(24px) scale(0.97);
+      transition: transform .25s ease;
+    }
+    #camera-permission-overlay.show .cam-modal { transform: translateY(0) scale(1); }
+    .cam-icon-ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg,#6366f1,#3b82f6);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem;
+      box-shadow: 0 8px 28px rgba(99,102,241,0.4);
+    }
+    .cam-modal h3 { font-size:1.15rem; font-weight:700; color:#f1f5f9; margin-bottom:.5rem; }
+    .cam-modal p  { font-size:.85rem; color:rgba(255,255,255,0.4); line-height:1.65; margin-bottom:1.5rem; }
+    .cam-modal .btn-allow {
+      width:100%; padding:.8rem;
+      background: linear-gradient(135deg,#6366f1,#3b82f6);
+      color:#fff; font-weight:600; border:none; border-radius:.75rem;
+      cursor:pointer; font-size:.9rem;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+      transition: opacity .15s;
+    }
+    .cam-modal .btn-allow:hover { opacity:.88; }
+    .cam-modal .btn-cancel {
+      margin-top:.75rem; background:none; border:none;
+      color:rgba(255,255,255,0.3); font-size:.8rem; cursor:pointer;
+    }
+    .cam-modal.blocked .cam-icon-ring {
+      background: linear-gradient(135deg,#ef4444,#f97316);
+      box-shadow: 0 8px 28px rgba(239,68,68,0.35);
+    }
+    .cam-modal.blocked .btn-allow {
+      background: linear-gradient(135deg,#ef4444,#f97316);
+    }
+    .cam-steps {
+      text-align:left; background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:.75rem; padding:1rem; margin-bottom:1.25rem;
+    }
+    .cam-steps li { font-size:.8rem; color:rgba(255,255,255,0.45); margin-bottom:.4rem; }
+    .cam-steps li::marker { content:'→  '; color:#818cf8; }
+
+    /* toast */
+    #toast {
+      position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(80px);
+      background:#1e293b; border:1px solid rgba(255,255,255,0.12);
+      color:#f1f5f9; padding:.75rem 1.25rem; border-radius:.875rem;
+      font-size:.875rem; font-weight:500; white-space:nowrap;
+      box-shadow:0 8px 32px rgba(0,0,0,0.4);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s;
+      opacity:0; z-index:9999;
+    }
+    #toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+  </style>
+</head>
+<body style="background:#030712; min-height:100vh;">
+
+  <!-- Background -->
+  <div class="mesh-bg"><div class="mesh-blob3"></div></div>
+  <div class="grid-overlay"></div>
+
+  <!-- ── NAVBAR ────────────────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div style="max-width:1100px; margin:0 auto; padding:.875rem 1.5rem; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:.75rem;">
+        <div style="width:36px;height:36px;border-radius:.625rem;background:linear-gradient(135deg,#6366f1,#3b82f6);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(99,102,241,0.4);">
+          <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <span style="font-weight:700; font-size:1rem; color:#f1f5f9; letter-spacing:-.01em;">Smart City Report</span>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <div id="user-badge" style="display:flex;align-items:center;gap:.5rem;padding:.375rem .75rem;border-radius:.625rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);">
+          <div style="width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;"></div>
+          <span id="user-email-display" style="font-size:.8rem;color:rgba(255,255,255,0.6);font-weight:500;">Citizen</span>
+        </div>
+        <button onclick="logout()"
+          style="font-size:.8rem;font-weight:600;color:rgba(255,255,255,0.4);background:none;border:1px solid rgba(255,255,255,0.1);border-radius:.5rem;padding:.375rem .75rem;cursor:pointer;transition:color .2s,border-color .2s;"
+          onmouseover="this.style.color='#f87171';this.style.borderColor='rgba(239,68,68,0.3)'"
+          onmouseout="this.style.color='rgba(255,255,255,0.4)';this.style.borderColor='rgba(255,255,255,0.1)'">
+          Sign out
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN LAYOUT ──────────────────────────────────────────────────── -->
+  <main style="max-width:1100px; margin:0 auto; padding:2rem 1.5rem; position:relative; z-index:10;">
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start;">
+
+      <!-- ── LEFT: Report an Issue ────────────────────────────────────── -->
+      <section class="glass fade-up" style="padding:1.75rem;">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.5rem;">
+          <div style="width:36px;height:36px;border-radius:.625rem;background:linear-gradient(135deg,#6366f1,#3b82f6);display:flex;align-items:center;justify-content:center;">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m-3-7h.01M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+            </svg>
+          </div>
+          <h2 style="font-size:1.125rem;font-weight:700;color:#f1f5f9;margin:0;">Report an Issue</h2>
+        </div>
+
+        <!-- Camera Preview -->
+        <div id="camera-area" class="camera-area" style="margin-bottom:1rem;">
+          <video id="camera-stream" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;" autoplay playsinline></video>
+          <canvas id="photo-canvas" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;"></canvas>
+
+          <div id="camera-placeholder" style="text-align:center;padding:2rem;">
+            <div style="width:56px;height:56px;border-radius:50%;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);display:flex;align-items:center;justify-content:center;margin:0 auto 0.875rem;">
+              <svg width="24" height="24" fill="none" stroke="rgba(99,102,241,0.7)" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <p style="font-size:.85rem;font-weight:500;color:rgba(255,255,255,0.35);margin:0;">Click to open camera</p>
+          </div>
+        </div>
+
+        <!-- Camera Controls -->
+        <div style="display:flex;gap:.625rem;margin-bottom:1rem;">
+          <button id="btn-start-camera"
+            style="flex:1;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.75rem;border-radius:.75rem;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.75);font-size:.875rem;font-weight:600;cursor:pointer;transition:background .2s;">
+            📷 Open Camera
+          </button>
+          <button id="btn-capture" class="btn-primary"
+            style="flex:1;display:none;padding:.75rem;border-radius:.75rem;font-size:.875rem;">
+            <span>Capture</span>
+          </button>
+          <button id="btn-retake"
+            style="flex:1;display:none;padding:.75rem;border-radius:.75rem;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.6);font-size:.875rem;font-weight:600;cursor:pointer;">
+            ↺ Retake
+          </button>
+        </div>
+
+        <!-- Location -->
+        <div style="display:flex;align-items:center;gap:.625rem;padding:.625rem .875rem;border-radius:.75rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);margin-bottom:1rem;">
+          <div style="position:relative;width:10px;height:10px;flex-shrink:0;">
+            <div id="location-dot" style="width:10px;height:10px;border-radius:50%;background:#475569;"></div>
+          </div>
+          <span id="location-status-text" style="font-size:.8rem;color:rgba(255,255,255,0.4);flex:1;">Location not detected</span>
+          <button id="btn-get-location"
+            style="font-size:.75rem;font-weight:600;color:#818cf8;background:none;border:none;cursor:pointer;white-space:nowrap;">
+            Retry
+          </button>
+        </div>
+
+        <!-- Description -->
+        <div style="margin-bottom:1rem;">
+          <label class="form-label" style="color:rgba(255,255,255,0.6);">Description <span style="color:rgba(255,255,255,0.25);font-weight:400;">(optional)</span></label>
+          <textarea id="complaint-desc" rows="3"
+            placeholder="Describe the issue — e.g. 'Large pothole near bus stop causing accidents'"
+            style="width:100%;padding:.75rem 1rem;font-size:.875rem;font-family:'Inter',sans-serif;color:#f1f5f9;background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.09);border-radius:.75rem;outline:none;resize:none;transition:border-color .2s,box-shadow .2s;box-sizing:border-box;"
+            onfocus="this.style.borderColor='rgba(99,102,241,0.5)';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+            onblur="this.style.borderColor='rgba(255,255,255,0.09)';this.style.boxShadow='none'"
+          ></textarea>
+        </div>
+
+        <!-- Submit -->
+        <button id="btn-submit-complaint" class="btn-primary">
+          <span>Submit Grievance</span>
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </button>
+
+        <!-- Info strip -->
+        <p style="margin-top:.875rem;text-align:center;font-size:.75rem;color:rgba(255,255,255,0.2);">
+          📷 Photo + 📍 Location required · AI classifies automatically
+        </p>
+      </section>
+
+      <!-- ── RIGHT: My Reports ─────────────────────────────────────────── -->
+      <section class="glass fade-up-delay" style="padding:1.75rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+          <div style="display:flex;align-items:center;gap:.75rem;">
+            <div style="width:36px;height:36px;border-radius:.625rem;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;">
+              <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+            </div>
+            <h2 style="font-size:1.125rem;font-weight:700;color:#f1f5f9;margin:0;">My Reports</h2>
+          </div>
+          <button id="btn-refresh-reports"
+            style="width:32px;height:32px;border-radius:.5rem;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:background .2s;"
+            title="Refresh reports">↻</button>
+        </div>
+
+        <div id="my-reports-list" style="display:flex;flex-direction:column;gap:.75rem;max-height:560px;overflow-y:auto;padding-right:.25rem;">
+          <!-- Shimmer placeholders -->
+          <div class="shimmer" style="height:76px;"></div>
+          <div class="shimmer" style="height:76px;opacity:.7;"></div>
+          <div class="shimmer" style="height:76px;opacity:.4;"></div>
+        </div>
+      </section>
+
+    </div><!-- /grid -->
+  </main>
+
+  <!-- ── TOAST ────────────────────────────────────────────────────────── -->
+  <div id="toast"></div>
+
+  <!-- ── CAMERA PERMISSION MODAL ───────────────────────────────────────── -->
+  <div id="camera-permission-overlay">
+    <div class="cam-modal" id="cam-modal-box">
+
+      <!-- Ask state -->
+      <div id="cam-ask-state">
+        <div class="cam-icon-ring">
+          <svg width="32" height="32" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </div>
+        <h3>Allow Camera Access</h3>
+        <p>To capture a photo of the civic issue, <strong style="color:#f1f5f9;">Smart City Report</strong> needs camera permission.</p>
+        <button class="btn-allow" id="cam-btn-allow">📷 Allow Camera</button><br>
+        <button class="btn-cancel" id="cam-btn-cancel">Cancel</button>
+      </div>
+
+      <!-- Blocked state -->
+      <div id="cam-blocked-state" style="display:none">
+        <div class="cam-icon-ring">
+          <svg width="32" height="32" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+          </svg>
+        </div>
+        <h3>Camera Blocked</h3>
+        <p>Camera permission was denied. To fix this:</p>
+        <ol class="cam-steps">
+          <li>Click the <strong style="color:#f1f5f9;">🔒 lock icon</strong> in your address bar</li>
+          <li>Set <strong style="color:#f1f5f9;">"Camera"</strong> to <strong style="color:#f1f5f9;">Allow</strong></li>
+          <li>Reload the page and try again</li>
+        </ol>
+        <button class="btn-allow" id="cam-btn-retry">↻ Try Again</button><br>
+        <button class="btn-cancel" id="cam-btn-close">Close</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="./dashboard.js"></script>
+
+  <script>
+    // Show email in navbar
+    const _user = JSON.parse(sessionStorage.getItem('grievance_user') || 'null');
+    if (_user?.email) {
+      document.getElementById('user-email-display').textContent = _user.email;
+    }
+
+    function logout() {
+      sessionStorage.removeItem('grievance_user');
+      window.location.href = '/index.html';
+    }
+
+    // Hover for camera open button
+    document.getElementById('btn-start-camera')?.addEventListener('mouseover', function() {
+      this.style.background = 'rgba(255,255,255,0.1)';
+    });
+    document.getElementById('btn-start-camera')?.addEventListener('mouseout', function() {
+      this.style.background = 'rgba(255,255,255,0.06)';
+    });
+  </script>
+</body>
+</html>
