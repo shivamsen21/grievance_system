@@ -127,6 +127,16 @@
         
         <div style="margin-bottom: 1.5rem;">
           <label style="display:block; margin-bottom: 0.5rem; color: rgba(255,255,255,0.8); font-size: 0.9rem;">Resolution Photo</label>
+          <div style="display:flex; gap:.6rem; margin-bottom:.6rem; flex-wrap:wrap;">
+            <button type="button" id="btn-open-camera"
+              style="padding:.5rem .8rem;border-radius:.5rem;border:1px solid rgba(16,185,129,.45);background:rgba(16,185,129,.15);color:#6ee7b7;cursor:pointer;font-size:.82rem;font-weight:600;">
+              Open Camera
+            </button>
+            <button type="button" id="btn-open-gallery"
+              style="padding:.5rem .8rem;border-radius:.5rem;border:1px solid rgba(148,163,184,.35);background:rgba(255,255,255,.06);color:#e2e8f0;cursor:pointer;font-size:.82rem;font-weight:600;">
+              Choose from Gallery
+            </button>
+          </div>
           <input type="file" id="completion-image" accept="image/*" required
             style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white;" />
         </div>

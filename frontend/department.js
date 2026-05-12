@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const listEl = document.getElementById('grievances-list');
   const btnRefresh = document.getElementById('btn-refresh-reports');
   const completionForm = document.getElementById('completion-form');
+  const completionImageInput = document.getElementById('completion-image');
+  const btnOpenCamera = document.getElementById('btn-open-camera');
+  const btnOpenGallery = document.getElementById('btn-open-gallery');
 
   // Load grievances on start
   loadGrievances();
@@ -70,9 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.innerHTML = `
         <!-- Image -->
-        <div style="width: 120px; height: 120px; border-radius: 0.75rem; overflow: hidden; flex-shrink: 0; background: #1e293b; border: 1px solid rgba(255,255,255,0.1);">
-          <img src="${c.image_url}" alt="Issue" style="width: 100%; height: 100%; object-fit: cover;" />
-        </div>
+        <a href="${c.image_url}" target="_blank" rel="noopener noreferrer"
+          title="Open complaint image"
+          style="width: 120px; height: 120px; border-radius: 0.75rem; overflow: hidden; flex-shrink: 0; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); display:block;">
+          <img src="${c.image_url}" alt="Issue" style="width: 100%; height: 100%; object-fit: cover; cursor: zoom-in;" />
+        </a>
 
         <!-- Details -->
         <div style="flex: 1; min-width: 250px;">
@@ -105,8 +110,10 @@ document.addEventListener('DOMContentLoaded', () => {
             ` : ''}
 
             ${c.completion_image_url ? `
-              <a href="${c.completion_image_url}" target="_blank" 
-                 style="padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 600; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; text-decoration: none; display: inline-flex; align-items: center;">
+              <a href="${c.completion_image_url}" target="_blank" rel="noopener noreferrer"
+                 title="Open resolution image"
+                 style="display:inline-flex; align-items:center; gap:.6rem; padding:.35rem .55rem; font-size:0.8rem; font-weight:600; background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.8); border:1px solid rgba(255,255,255,0.1); border-radius:0.5rem; text-decoration:none;">
+                 <img src="${c.completion_image_url}" alt="Resolution" style="width:32px;height:32px;border-radius:.35rem;object-fit:cover;cursor:zoom-in;" />
                  View Resolution Photo
               </a>
             ` : ''}
@@ -131,9 +138,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = e.target.getAttribute('data-id');
         document.getElementById('completion-complaint-id').value = id;
         document.getElementById('completion-modal').classList.add('show');
+        if (completionImageInput) completionImageInput.value = '';
       });
     });
   }
+
+  btnOpenCamera?.addEventListener('click', () => {
+    if (!completionImageInput) return;
+    completionImageInput.setAttribute('accept', 'image/*');
+    completionImageInput.setAttribute('capture', 'environment');
+    completionImageInput.click();
+  });
+
+  btnOpenGallery?.addEventListener('click', () => {
+    if (!completionImageInput) return;
+    completionImageInput.setAttribute('accept', 'image/*');
+    completionImageInput.removeAttribute('capture');
+    completionImageInput.click();
+  });
 
   // --- API Calls ---
 
@@ -198,6 +220,24 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.textContent = origText;
       submitBtn.disabled = false;
     }
+  });
+
+  completionImageInput?.addEventListener('change', () => {
+    const file = completionImageInput.files?.[0];
+    if (!file) return;
+
+    let preview = document.getElementById('completion-preview-link');
+    if (!preview) {
+      preview = document.createElement('a');
+      preview.id = 'completion-preview-link';
+      preview.target = '_blank';
+      preview.rel = 'noopener noreferrer';
+      preview.style.cssText = 'display:inline-flex;margin-top:.6rem;font-size:.8rem;color:#93c5fd;text-decoration:underline;';
+      preview.textContent = 'Open selected image';
+      completionImageInput.insertAdjacentElement('afterend', preview);
+    }
+
+    preview.href = URL.createObjectURL(file);
   });
 
   // --- Toast ---
