@@ -27,42 +27,66 @@ router.post('/user/register', async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    // If email confirmations are OFF in Supabase, data.session will exist.
-    // If they are ON, data.session is null. We'll return a mock token so the UI proceeds smoothly,
-    // but the proper way is to disable 'Confirm email' in Supabase Auth providers.
-    let token = data.session?.access_token;
-    if (!token) {
-       token = "mock-token-please-disable-email-confirmation-in-supabase";
+    if (!data.session?.access_token) {
+      return res.status(400).json({
+        error: 'Email verification is enabled in Supabase. Disable "Confirm email" in Auth settings.'
+      });
     }
 
     res.json({ 
       message: 'Registration successful!', 
       user: data.user,
-      token: token 
+      token: data.session.access_token
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Login user
+// Login user  (supports email OR phone)
 router.post('/user/login', async (req, res) => {
-  const { email, password } = req.body;
+  let { email, phone, password } = req.body;
+
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-      if (error.message === 'Email not confirmed') {
-        // Bypass email confirmation for prototype locally
-        return res.json({ 
-          token: "mock-token-please-disable-email-confirmation-in-supabase", 
-          user: { email: email, id: "unconfirmed-user-bypass" } 
-        });
+    // ── Phone login: look up email from profiles table ──────────────
+    if (!email && phone) {
+      const { data: profile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('phone', phone)
+        .single();
+
+      if (profileErr || !profile) {
+        return res.status(404).json({ error: 'No account found with that phone number.' });
       }
-      return res.status(401).json({ error: error.message });
+      email = profile.email;
     }
-    
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email or phone number is required.' });
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) return res.status(401).json({ error: error.message });
+
     res.json({ token: data.session.access_token, user: data.user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ─── GET DEPARTMENTS LIST (for populating dropdown) ────────────────────────────
+router.get('/departments', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('departments')
+      .select('id, name, email')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -72,11 +96,26 @@ router.post('/user/login', async (req, res) => {
 router.post('/dept/login', async (req, res) => {
   const { email, password } = req.body;
   try {
-    const { data: dept, error } = await supabase
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      return res.status(400).json({ error: 'Department email is required' });
+    }
+
+    console.log(`[DEPT LOGIN ATTEMPT] Original: "${email}", Normalized: "${normalizedEmail}"`);
+
+    // Alias fallback keeps compatibility with legacy seed data naming.
+    const emailCandidates = [normalizedEmail];
+    if (normalizedEmail === 'other@smartcity.gov') emailCandidates.push('others@smartcity.gov');
+    if (normalizedEmail === 'others@smartcity.gov') emailCandidates.push('other@smartcity.gov');
+
+    const { data: depts, error } = await supabase
       .from('departments')
       .select('*')
-      .eq('email', email)
-      .single();
+      .in('email', emailCandidates);
+
+    const dept = (depts || []).find(d =>
+      emailCandidates.includes(String(d.email || '').trim().toLowerCase())
+    );
 
     if (error || !dept) return res.status(404).json({ error: 'Department not found' });
 

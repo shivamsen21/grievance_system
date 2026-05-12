@@ -112,7 +112,8 @@ insert into public.departments (name, email, password_hash) values
   ('Electrical Department',  'electric@smartcity.gov', '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FxQScByHh0ghWJGYOBUMbDGIH4Q2gR2'),
   ('Water Supply',           'water@smartcity.gov', '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FxQScByHh0ghWJGYOBUMbDGIH4Q2gR2'),
   ('Sanitation Department',  'sanitation@smartcity.gov', '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FxQScByHh0ghWJGYOBUMbDGIH4Q2gR2'),
-  ('Municipal Corporation',  'municipal@smartcity.gov', '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FxQScByHh0ghWJGYOBUMbDGIH4Q2gR2')
+  ('Municipal Corporation',  'municipal@smartcity.gov', '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FxQScByHh0ghWJGYOBUMbDGIH4Q2gR2'),
+  ('Other',                  'other@smartcity.gov', '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FxQScByHh0ghWJGYOBUMbDGIH4Q2gR2')
 on conflict (email) do nothing;
 
 -- ── DONE ────────────────────────────────────────────────────

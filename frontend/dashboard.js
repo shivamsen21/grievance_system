@@ -1,43 +1,44 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api'; // Vite proxy → localhost:5000 (works on LAN and ngrok)
 
 document.addEventListener('DOMContentLoaded', () => {
   // ─── ELEMENT REFS ───────────────────────────────────────────────────────────
-  const video            = document.getElementById('camera-stream');
-  const canvas           = document.getElementById('photo-canvas');
-  const btnStartCamera   = document.getElementById('btn-start-camera');
-  const btnCapture       = document.getElementById('btn-capture');
-  const btnRetake        = document.getElementById('btn-retake');
-  const placeholder      = document.getElementById('camera-placeholder');
+  const video = document.getElementById('camera-stream');
+  const canvas = document.getElementById('photo-canvas');
+  const btnStartCamera = document.getElementById('btn-start-camera');
+  const btnCapture = document.getElementById('btn-capture');
+  const btnRetake = document.getElementById('btn-retake');
+  const placeholder = document.getElementById('camera-placeholder');
+  const liveBadge = document.getElementById('camera-live-badge');
 
   // ─── PERMISSION MODAL REFS ──────────────────────────────────────────────────
-  const permOverlay    = document.getElementById('camera-permission-overlay');
-  const camModalBox    = document.getElementById('cam-modal-box');
-  const askState       = document.getElementById('cam-ask-state');
-  const blockedState   = document.getElementById('cam-blocked-state');
-  const camBtnAllow    = document.getElementById('cam-btn-allow');
-  const camBtnCancel   = document.getElementById('cam-btn-cancel');
-  const camBtnRetry    = document.getElementById('cam-btn-retry');
-  const camBtnClose    = document.getElementById('cam-btn-close');
+  const permOverlay = document.getElementById('camera-permission-overlay');
+  const camModalBox = document.getElementById('cam-modal-box');
+  const askState = document.getElementById('cam-ask-state');
+  const blockedState = document.getElementById('cam-blocked-state');
+  const camBtnAllow = document.getElementById('cam-btn-allow');
+  const camBtnCancel = document.getElementById('cam-btn-cancel');
+  const camBtnRetry = document.getElementById('cam-btn-retry');
+  const camBtnClose = document.getElementById('cam-btn-close');
 
-  const locationIcon     = document.getElementById('location-status-icon');
-  const locationText     = document.getElementById('location-status-text');
-  const btnGetLocation   = document.getElementById('btn-get-location');
+  const locationIcon = document.getElementById('location-status-icon');
+  const locationText = document.getElementById('location-status-text');
+  const btnGetLocation = document.getElementById('btn-get-location');
 
-  const complaintDesc    = document.getElementById('complaint-desc');
-  const btnSubmit        = document.getElementById('btn-submit-complaint');
-  const myReportsList    = document.getElementById('my-reports-list');
+  const complaintDesc = document.getElementById('complaint-desc');
+  const btnSubmit = document.getElementById('btn-submit-complaint');
+  const myReportsList = document.getElementById('my-reports-list');
 
   // ─── STATE ─────────────────────────────────────────────────────────────────
-  let stream        = null;
-  let photoBlob     = null;       // will store the captured photo as Blob
-  let userLocation  = null;
+  let stream = null;
+  let photoBlob = null;       // will store the captured photo as Blob
+  let userLocation = null;
   let locationWatch = null;       // watchId for continuous tracking
-  let isLocating    = false;
+  let isLocating = false;
 
   // Retrieve logged-in user from sessionStorage (set during login)
   const user = JSON.parse(sessionStorage.getItem('grievance_user') || 'null');
-  const userId    = user?.id    || null;
+  const userId = user?.id || null;
   const userEmail = user?.email || null;
 
   // ─── TOAST HELPER ──────────────────────────────────────────────────────────
@@ -59,16 +60,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const dot = document.getElementById('location-dot');
     if (!dot) return;
     dot.style.background = '';
-    dot.style.boxShadow  = '';
+    dot.style.boxShadow = '';
     if (state === 'ok') {
       dot.style.background = '#10b981';
-      dot.style.boxShadow  = '0 0 6px #10b981';
+      dot.style.boxShadow = '0 0 6px #10b981';
     } else if (state === 'err') {
       dot.style.background = '#ef4444';
-      dot.style.boxShadow  = '0 0 6px #ef4444';
+      dot.style.boxShadow = '0 0 6px #ef4444';
     } else if (state === 'loading') {
       dot.style.background = '#f59e0b';
-      dot.style.boxShadow  = '0 0 6px #f59e0b';
+      dot.style.boxShadow = '0 0 6px #f59e0b';
     } else {
       dot.style.background = '#475569';
     }
@@ -123,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showPermModal() {
     // Reset to ask-state
-    askState.style.display     = '';
+    askState.style.display = '';
     blockedState.style.display = 'none';
     camModalBox.classList.remove('blocked');
     permOverlay.classList.add('show');
@@ -135,17 +136,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function requestCamera() {
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API not available. This is often because the app is running on an insecure connection (HTTP instead of HTTPS) on a mobile device.');
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+      } catch (constraintErr) {
+        console.warn('Initial camera constraints failed, trying fallback...', constraintErr);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
 
       // Permission granted — hide modal and start video
       hidePermModal();
       video.srcObject = stream;
-      video.classList.remove('hidden');
-      placeholder.classList.add('hidden');
-      btnStartCamera.classList.add('hidden');
-      btnCapture.classList.remove('hidden');
+      video.style.display = 'block';
+      placeholder.style.display = 'none';
+      btnStartCamera.style.display = 'none';
+      btnCapture.style.display = 'flex';   // ← only shown AFTER camera allowed
+      if (liveBadge) { liveBadge.style.display = 'flex'; }
 
       // Auto-start location tracking
       startLocationTracking();
@@ -155,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         // Show blocked / denied state
-        askState.style.display     = 'none';
+        askState.style.display = 'none';
         blockedState.style.display = '';
         camModalBox.classList.add('blocked');
       } else {
@@ -176,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // "Try Again" from blocked state
   camBtnRetry.addEventListener('click', () => {
-    askState.style.display     = '';
+    askState.style.display = '';
     blockedState.style.display = 'none';
     camModalBox.classList.remove('blocked');
     requestCamera();
@@ -194,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnCapture.addEventListener('click', () => {
     if (!stream) return;
 
-    canvas.width  = video.videoWidth;
+    canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -204,18 +215,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Freeze stream
     stream.getTracks().forEach(t => t.stop());
     stream = null;
-    video.classList.add('hidden');
-    canvas.classList.remove('hidden');
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    if (liveBadge) { liveBadge.style.display = 'none'; }
 
-    btnCapture.classList.add('hidden');
-    btnRetake.classList.remove('hidden');
+    btnCapture.style.display = 'none';
+    btnRetake.style.display = 'flex';
   });
 
   btnRetake.addEventListener('click', async () => {
     photoBlob = null;
-    canvas.classList.add('hidden');
-    btnRetake.classList.add('hidden');
-    btnStartCamera.classList.remove('hidden');
+    canvas.style.display = 'none';
+    btnRetake.style.display = 'none';
+    btnStartCamera.style.display = 'flex';
+    placeholder.style.display = 'block';
+    if (liveBadge) { liveBadge.style.display = 'none'; }
     // Restart camera & location
     btnStartCamera.click();
   });
@@ -238,11 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
     formData.append('lat', userLocation.lat);
     formData.append('lng', userLocation.lng);
     formData.append('description', description);
-    if (userId)    formData.append('user_id', userId);
+    if (userId) formData.append('user_id', userId);
     if (userEmail) formData.append('user_email', userEmail);
 
     btnSubmit.textContent = '⏳ Submitting…';
-    btnSubmit.disabled    = true;
+    btnSubmit.disabled = true;
 
     try {
       const resp = await fetch(`${API_BASE}/complaints`, {
@@ -266,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('❌ Error: ' + err.message, 5000);
     } finally {
       btnSubmit.textContent = 'Submit Grievance';
-      btnSubmit.disabled    = false;
+      btnSubmit.disabled = false;
     }
   });
 
@@ -283,19 +297,120 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     complaintDesc.value = '';
-    canvas.classList.add('hidden');
-    placeholder.classList.remove('hidden');
-    btnRetake.classList.add('hidden');
-    btnStartCamera.classList.remove('hidden');
-    btnCapture.classList.add('hidden');
+    canvas.style.display = 'none';
+    placeholder.style.display = 'block';
+    btnRetake.style.display = 'none';      // hidden until camera allowed
+    btnCapture.style.display = 'none';      // hidden until camera allowed
+    btnStartCamera.style.display = 'flex';
+    if (liveBadge) { liveBadge.style.display = 'none'; }
     btnGetLocation.classList.remove('hidden');
     setLocationUI('idle', 'Location not verified');
   }
 
-  // ─── REFRESH BUTTON ────────────────────────────────────────────────────────
+  // ─── REFRESH BUTTON ────────────────────────────────────────────
   document.getElementById('btn-refresh-reports')?.addEventListener('click', () => {
     if (userId || userEmail) loadUserReports(userId || 'fallback');
   });
+
+  // ─── VOICE-TO-TEXT ────────────────────────────────────────────
+  const btnVoice = document.getElementById('btn-voice');
+  const voiceStatus = document.getElementById('voice-status');
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    // Browser doesn't support Speech API — hide the mic button gracefully
+    if (btnVoice) {
+      btnVoice.title = 'Voice input not supported in this browser';
+      btnVoice.style.opacity = '0.3';
+      btnVoice.style.cursor = 'not-allowed';
+    }
+    if (voiceStatus) voiceStatus.textContent = 'Voice input not supported in this browser.';
+  } else {
+    let recognition = null;
+    let isRecording = false;
+    let interimBuffer = ''; // holds current interim text
+
+    function setVoiceStatus(msg, cls = '') {
+      if (!voiceStatus) return;
+      voiceStatus.textContent = msg;
+      voiceStatus.className = cls ? `${cls}` : '';
+    }
+
+    function startRecognition() {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN';   // adjust locale if needed
+      recognition.interimResults = true;      // show words as you speak
+      recognition.continuous = true;      // keep listening until stopped
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        isRecording = true;
+        interimBuffer = '';
+        btnVoice.classList.add('recording');
+        const lbl = document.getElementById('btn-voice-label');
+        if (lbl) lbl.textContent = '⏹ Stop';
+        setVoiceStatus('🔴 Listening… Speak now', 'active');
+      };
+
+      recognition.onresult = (e) => {
+        let interim = '';
+        let finalText = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const transcript = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            finalText += transcript + ' ';
+          } else {
+            interim += transcript;
+          }
+        }
+        // Append confirmed final text to textarea
+        if (finalText) {
+          complaintDesc.value = (complaintDesc.value + finalText).trimStart();
+        }
+        // Show live interim text in status
+        interimBuffer = interim;
+        if (interim) setVoiceStatus('🔴 ' + interim, 'active');
+      };
+
+      recognition.onerror = (e) => {
+        console.warn('Speech error:', e.error);
+        let msg = 'Voice error: ' + e.error;
+        if (e.error === 'not-allowed') msg = 'Microphone permission denied.';
+        if (e.error === 'no-speech') msg = 'No speech detected. Try again.';
+        if (e.error === 'network') msg = 'Network error. Check connection.';
+        setVoiceStatus(msg);
+        stopRecognition();
+      };
+
+      recognition.onend = () => {
+        if (isRecording) {
+          // Auto-restart to keep continuous listening
+          try { recognition.start(); } catch (_) { stopRecognition(); }
+        }
+      };
+
+      recognition.start();
+    }
+
+    function stopRecognition() {
+      isRecording = false;
+      btnVoice.classList.remove('recording');
+      const lbl = document.getElementById('btn-voice-label');
+      if (lbl) lbl.textContent = '🎤 Voice';
+      if (recognition) { try { recognition.stop(); } catch (_) { } recognition = null; }
+      const finalVal = complaintDesc.value.trim();
+      setVoiceStatus(finalVal ? '✅ Done! Text added to description.' : '', finalVal ? 'success' : '');
+      setTimeout(() => { if (voiceStatus && !isRecording) voiceStatus.textContent = ''; }, 3500);
+    }
+
+    btnVoice.addEventListener('click', () => {
+      if (isRecording) {
+        stopRecognition();
+      } else {
+        startRecognition();
+      }
+    });
+  }
 
   // ─── LOAD USER REPORTS ─────────────────────────────────────────────────────
 
@@ -310,10 +425,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       // Build URL: pass email as fallback for mock-bypass logins
-      const url = new URL(`${API_BASE}/complaints/user/${encodeURIComponent(uid)}`);
-      if (userEmail) url.searchParams.set('email', userEmail);
+      let fetchUrl = `${API_BASE}/complaints/user/${encodeURIComponent(uid)}`;
+      if (userEmail) fetchUrl += `?email=${encodeURIComponent(userEmail)}`;
 
-      const resp = await fetch(url.toString());
+      const resp = await fetch(fetchUrl);
       const data = await resp.json();
 
       if (!resp.ok) throw new Error(data.error);
@@ -336,9 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <!-- Thumbnail -->
           <div style="width:60px;height:60px;border-radius:.625rem;background:rgba(255,255,255,0.06);flex-shrink:0;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
             ${c.image_url
-              ? `<img src="${c.image_url}" style="width:100%;height:100%;object-fit:cover;" alt="Issue photo" loading="lazy">`
-              : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:1.25rem;">📷</div>`
-            }
+          ? `<img src="${c.image_url}" style="width:100%;height:100%;object-fit:cover;" alt="Issue photo" loading="lazy">`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:1.25rem;">📷</div>`
+        }
           </div>
 
           <!-- Content -->
@@ -353,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font-size:.72rem;color:rgba(255,255,255,0.3);">
               ${c.department_name ? `<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);padding:.15rem .5rem;border-radius:99px;">${c.department_name}</span>` : ''}
               <span style="display:inline-flex;align-items:center;gap:.3rem;">
-                <span style="width:6px;height:6px;border-radius:50%;background:${c.severity==='high'?'#ef4444':c.severity==='medium'?'#f59e0b':'#10b981'};display:inline-block;"></span>
+                <span style="width:6px;height:6px;border-radius:50%;background:${c.severity === 'high' ? '#ef4444' : c.severity === 'medium' ? '#f59e0b' : '#10b981'};display:inline-block;"></span>
                 ${capitalize(c.severity || '')} severity
               </span>
               <span style="margin-left:auto;">${formatDate(c.created_at)}</span>
@@ -377,19 +492,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── UTILITIES ─────────────────────────────────────────────────────────────
 
   function statusBadge(status) {
-    if (status === 'completed')  return 'bg-emerald-100 text-emerald-700';
+    if (status === 'completed') return 'bg-emerald-100 text-emerald-700';
     if (status === 'in_process') return 'bg-blue-100 text-blue-700';
     return 'bg-amber-100 text-amber-700';
   }
 
   function statusLabel(status) {
-    if (status === 'completed')  return '✅ Completed';
+    if (status === 'completed') return '✅ Completed';
     if (status === 'in_process') return '🔄 In Progress';
     return '⏳ Pending';
   }
 
   function severityDot(severity) {
-    if (severity === 'high')   return 'bg-red-400';
+    if (severity === 'high') return 'bg-red-400';
     if (severity === 'medium') return 'bg-amber-400';
     return 'bg-emerald-400';
   }

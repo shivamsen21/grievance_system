@@ -45,15 +45,47 @@
 
       <!-- ─── Citizen: Login Form ──────────────────────────────────── -->
       <form id="user-login-form" class="space-y-4">
-        <div>
-          <label class="form-label" style="color:rgba(255,255,255,0.75);">Email address</label>
-          <input type="email" id="login-email" placeholder="you@example.com"
-            class="form-input" required />
+
+        <!-- Login method toggle (Email / Phone) -->
+        <div class="flex gap-1 p-1 rounded-xl" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);margin-bottom:.25rem;">
+          <button type="button" id="login-mode-email" class="tab-pill active" onclick="setLoginMode('email')">✉️ Email</button>
+          <button type="button" id="login-mode-phone" class="tab-pill" onclick="setLoginMode('phone')">📱 Phone</button>
         </div>
+
+        <!-- Email field (shown by default) -->
+        <div id="login-email-field">
+          <label class="form-label" style="color:rgba(255,255,255,0.75);">Email address</label>
+          <input type="email" id="login-email" placeholder="Email"
+            class="form-input" />
+        </div>
+
+        <!-- Phone field (hidden by default) -->
+        <div id="login-phone-field" style="display:none;">
+          <label class="form-label" style="color:rgba(255,255,255,0.75);">Phone number</label>
+          <div style="display:flex;gap:.5rem;">
+            <span style="display:inline-flex;align-items:center;padding:0 .875rem;background:#f0f4ff;border:1.5px solid #c7d2fe;border-radius:.75rem;color:#4f46e5;font-weight:600;font-size:.9rem;white-space:nowrap;">+91</span>
+            <input type="tel" id="login-phone" placeholder="Mobile No." pattern="[0-9]{10}"
+              class="form-input" style="flex:1;" />
+          </div>
+        </div>
+
         <div>
           <label class="form-label" style="color:rgba(255,255,255,0.75);">Password</label>
-          <input type="password" id="login-password" placeholder="••••••••"
-            class="form-input" required />
+          <div style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="login-password" placeholder="••••••••"
+              class="form-input" required style="padding-right:3rem;width:100%;" />
+            <button type="button" id="toggle-login-password"
+              style="position:absolute;right:.5rem;display:flex;align-items:center;gap:.25rem;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:.4rem;cursor:pointer;color:#818cf8;padding:.25rem .5rem;font-size:.7rem;font-weight:600;transition:background .2s;">
+              <svg id="eye-login-show" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg id="eye-login-hide" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+              <span id="eye-login-label">Show</span>
+            </button>
+          </div>
         </div>
 
         <button type="submit" class="btn-primary mt-2">
@@ -74,19 +106,19 @@
       <form id="user-register-form" class="space-y-4 hidden">
         <div>
           <label class="form-label" style="color:rgba(255,255,255,0.75);">Full Name</label>
-          <input type="text" id="register-name" placeholder="Ramesh Kumar"
+          <input type="text" id="register-name" placeholder="Name"
             class="form-input" required />
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="form-label" style="color:rgba(255,255,255,0.75);">Phone</label>
-            <input type="tel" id="register-phone" placeholder="9876543210"
+            <input type="tel" id="register-phone" placeholder="Mobile No."
               class="form-input" required />
           </div>
           <div>
             <label class="form-label" style="color:rgba(255,255,255,0.75);">Age</label>
-            <input type="number" id="register-age" placeholder="25" min="1"
+            <input type="number" id="register-age" placeholder="Age" min="1"
               class="form-input" required />
           </div>
         </div>
@@ -103,14 +135,27 @@
 
         <div>
           <label class="form-label" style="color:rgba(255,255,255,0.75);">Email address</label>
-          <input type="email" id="register-email" placeholder="you@example.com"
+          <input type="email" id="register-email" placeholder="Email"
             class="form-input" required />
         </div>
 
         <div>
           <label class="form-label" style="color:rgba(255,255,255,0.75);">Password</label>
-          <input type="password" id="register-password" placeholder="Min. 6 characters"
-            class="form-input" required />
+          <div style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="register-password" placeholder="Min. 6 characters"
+              class="form-input" required style="padding-right:3rem;width:100%;" />
+            <button type="button" id="toggle-register-password"
+              style="position:absolute;right:.5rem;display:flex;align-items:center;gap:.25rem;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:.4rem;cursor:pointer;color:#818cf8;padding:.25rem .5rem;font-size:.7rem;font-weight:600;transition:background .2s;">
+              <svg id="eye-register-show" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg id="eye-register-hide" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+              <span id="eye-register-label">Show</span>
+            </button>
+          </div>
         </div>
 
         <button type="submit" class="btn-primary mt-2">
@@ -141,14 +186,28 @@
         </div>
 
         <div>
-          <label class="form-label" style="color:rgba(255,255,255,0.75);">Department Email</label>
-          <input type="email" placeholder="roads@smartcity.gov"
-            class="form-input" required />
+          <label class="form-label" style="color:rgba(255,255,255,0.75);">Department</label>
+          <select id="dept-login-email" class="form-input" required>
+            <option value="" disabled selected>Loading departments…</option>
+          </select>
         </div>
         <div>
           <label class="form-label" style="color:rgba(255,255,255,0.75);">Password</label>
-          <input type="password" placeholder="••••••••"
-            class="form-input" required />
+          <div style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="dept-password" placeholder="••••••••"
+              class="form-input" required style="padding-right:3rem;width:100%;" />
+            <button type="button" id="toggle-dept-password"
+              style="position:absolute;right:.5rem;display:flex;align-items:center;gap:.25rem;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:.4rem;cursor:pointer;color:#34d399;padding:.25rem .5rem;font-size:.7rem;font-weight:600;transition:background .2s;">
+              <svg id="eye-dept-show" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg id="eye-dept-hide" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:none;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+              <span id="eye-dept-label">Show</span>
+            </button>
+          </div>
         </div>
 
         <button type="submit" class="btn-secondary mt-2">
@@ -187,8 +246,76 @@
         deptForm.classList.remove('hidden');
         loginForm.classList.add('hidden');
         registerForm.classList.add('hidden');
+        // Reload departments every time this tab is opened
+        if (typeof window._loadDepartments === 'function') window._loadDepartments();
       }
     }
+
+    /* ── Login mode toggle: Email ↔ Phone ── */
+    /* ── Show / hide password toggle ── */
+    function togglePassword(inputId, showSvgId, hideSvgId) {
+      const inp = document.getElementById(inputId);
+      const eyeShow = document.getElementById(showSvgId);
+      const eyeHide = document.getElementById(hideSvgId);
+      if (!inp) return;
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        if (eyeShow) eyeShow.style.display = 'none';
+        if (eyeHide) eyeHide.style.display = 'block';
+      } else {
+        inp.type = 'password';
+        if (eyeShow) eyeShow.style.display = 'block';
+        if (eyeHide) eyeHide.style.display = 'none';
+      }
+    }
+
+    document.getElementById('toggle-login-password')?.addEventListener('click', function() {
+      togglePassword('login-password', 'eye-login-show', 'eye-login-hide');
+      const lbl = document.getElementById('eye-login-label');
+      if (lbl) lbl.textContent = document.getElementById('login-password').type === 'text' ? 'Hide' : 'Show';
+    });
+    document.getElementById('toggle-register-password')?.addEventListener('click', function() {
+      togglePassword('register-password', 'eye-register-show', 'eye-register-hide');
+      const lbl = document.getElementById('eye-register-label');
+      if (lbl) lbl.textContent = document.getElementById('register-password').type === 'text' ? 'Hide' : 'Show';
+    });
+    document.getElementById('toggle-dept-password')?.addEventListener('click', function() {
+      togglePassword('dept-password', 'eye-dept-show', 'eye-dept-hide');
+      const lbl = document.getElementById('eye-dept-label');
+      if (lbl) lbl.textContent = document.getElementById('dept-password').type === 'text' ? 'Hide' : 'Show';
+    });
+
+    window.togglePassword = togglePassword;
+
+    let _loginMode = 'email';
+    function setLoginMode(mode) {
+      _loginMode = mode;
+      const emailField  = document.getElementById('login-email-field');
+      const phoneField  = document.getElementById('login-phone-field');
+      const emailInput  = document.getElementById('login-email');
+      const phoneInput  = document.getElementById('login-phone');
+      const btnEmail    = document.getElementById('login-mode-email');
+      const btnPhone    = document.getElementById('login-mode-phone');
+
+      if (mode === 'email') {
+        emailField.style.display = '';
+        phoneField.style.display = 'none';
+        emailInput.required = true;
+        phoneInput.required = false;
+        btnEmail.classList.add('active');
+        btnPhone.classList.remove('active');
+      } else {
+        emailField.style.display = 'none';
+        phoneField.style.display = '';
+        emailInput.required = false;
+        phoneInput.required = true;
+        btnPhone.classList.add('active');
+        btnEmail.classList.remove('active');
+      }
+    }
+
+    /* Expose mode to main.js */
+    window.getLoginMode = () => _loginMode;
   </script>
   <script type="module" src="./main.js"></script>
 </body>

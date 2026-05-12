@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Department Dashboard — Smart City Report</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* Modal for completion image upload */
+    #completion-modal {
+      position: fixed; inset: 0;
+      background: rgba(3,7,18,0.8);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      opacity: 0; pointer-events: none;
+      transition: opacity .25s ease;
+    }
+    #completion-modal.show { opacity: 1; pointer-events: all; }
+    .comp-modal-box {
+      background: #0f172a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 1.5rem;
+      padding: 2.5rem 2rem 2rem;
+      max-width: 28rem; width: 90%;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+      transform: translateY(24px) scale(0.97);
+      transition: transform .25s ease;
+    }
+    #completion-modal.show .comp-modal-box { transform: translateY(0) scale(1); }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-pending { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .status-in_process { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .status-completed { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    /* toast */
+    #toast {
+      position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(80px);
+      background:#1e293b; border:1px solid rgba(255,255,255,0.12);
+      color:#f1f5f9; padding:.75rem 1.25rem; border-radius:.875rem;
+      font-size:.875rem; font-weight:500; white-space:nowrap;
+      box-shadow:0 8px 32px rgba(0,0,0,0.4);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s;
+      opacity:0; z-index:9999;
+    }
+    #toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+  </style>
+</head>
+<body style="background:#030712; min-height:100vh;">
+
+  <!-- Background -->
+  <div class="mesh-bg"><div class="mesh-blob3"></div></div>
+  <div class="grid-overlay"></div>
+
+  <!-- ── NAVBAR ────────────────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div style="max-width:1100px; margin:0 auto; padding:.875rem 1.5rem; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:.75rem;">
+        <div style="width:36px;height:36px;border-radius:.625rem;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(16,185,129,0.4);">
+          <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+        </div>
+        <span style="font-weight:700; font-size:1rem; color:#f1f5f9; letter-spacing:-.01em;">Department Portal</span>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <div id="dept-badge" style="display:flex;align-items:center;gap:.5rem;padding:.375rem .75rem;border-radius:.625rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);">
+          <div style="width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;"></div>
+          <span id="dept-name-display" style="font-size:.8rem;color:rgba(255,255,255,0.6);font-weight:500;">Department</span>
+        </div>
+        <button onclick="logout()"
+          style="font-size:.8rem;font-weight:600;color:rgba(255,255,255,0.4);background:none;border:1px solid rgba(255,255,255,0.1);border-radius:.5rem;padding:.375rem .75rem;cursor:pointer;transition:color .2s,border-color .2s;"
+          onmouseover="this.style.color='#f87171';this.style.borderColor='rgba(239,68,68,0.3)'"
+          onmouseout="this.style.color='rgba(255,255,255,0.4)';this.style.borderColor='rgba(255,255,255,0.1)'">
+          Sign out
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN LAYOUT ──────────────────────────────────────────────────── -->
+  <main style="max-width:1100px; margin:0 auto; padding:2rem 1.5rem; position:relative; z-index:10;">
+
+    <section class="glass fade-up" style="padding:1.75rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <h2 style="font-size:1.25rem;font-weight:700;color:#f1f5f9;margin:0;">Assigned Grievances</h2>
+        </div>
+        <button id="btn-refresh-reports"
+          style="width:36px;height:36px;border-radius:.5rem;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:background .2s;"
+          title="Refresh reports">↻</button>
+      </div>
+
+      <div id="grievances-list" style="display:grid; grid-template-columns: 1fr; gap: 1rem;">
+        <!-- Shimmer placeholders -->
+        <div class="shimmer" style="height:140px;"></div>
+        <div class="shimmer" style="height:140px;opacity:.7;"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── TOAST ────────────────────────────────────────────────────────── -->
+  <div id="toast"></div>
+
+  <!-- ── COMPLETION MODAL ─────────────────────────────────────────────── -->
+  <div id="completion-modal">
+    <div class="comp-modal-box">
+      <h3 style="font-size:1.25rem; font-weight:700; color:#f1f5f9; margin-bottom:1rem;">Mark as Completed</h3>
+      <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin-bottom:1.5rem;">
+        Please upload a photo proving the issue has been resolved.
+      </p>
+
+      <form id="completion-form">
+        <input type="hidden" id="completion-complaint-id" />
+        
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display:block; margin-bottom: 0.5rem; color: rgba(255,255,255,0.8); font-size: 0.9rem;">Resolution Photo</label>
+          <input type="file" id="completion-image" accept="image/*" required
+            style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white;" />
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" onclick="closeCompletionModal()"
+            style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; cursor: pointer;">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; background: linear-gradient(135deg,#10b981,#059669); color: white; border: none; font-weight: bold; cursor: pointer;">
+            Submit
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="./department.js"></script>
+
+  <script>
+    // Show dept name in navbar
+    const _dept = JSON.parse(sessionStorage.getItem('grievance_dept') || 'null');
+    if (!_dept) {
+      window.location.href = '/index.html'; // Redirect to login if not logged in
+    } else {
+      document.getElementById('dept-name-display').textContent = _dept.name || 'Department';
+    }
+
+    function logout() {
+      sessionStorage.removeItem('grievance_dept');
+      window.location.href = '/index.html';
+    }
+
+    function closeCompletionModal() {
+      document.getElementById('completion-modal').classList.remove('show');
+    }
+  </script>
+</body>
+</html>

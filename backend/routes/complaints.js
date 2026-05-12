@@ -3,12 +3,13 @@ const router  = express.Router();
 const multer  = require('multer');
 const supabase = require('../services/supabase');
 const { uploadImage } = require('../services/cloudinary');
-const { analyzeGrievance } = require('../services/ai');
+const { analyzeGrievance, normalizeDepartment } = require('../services/ai');
 const {
   sendComplaintReceivedMail,
   sendStatusUpdateMail,
   sendComplaintCompletedMail,
 } = require('../services/mailer');
+
 
 // ── Multer: keep file in memory buffer ────────────────────────────────────────
 const upload = multer({
@@ -27,6 +28,8 @@ router.post('/', upload.single('image'), async (req, res) => {
   try {
     const { user_id, user_email, description, lat, lng } = req.body;
 
+
+
     if (!req.file) {
       return res.status(400).json({ error: 'Image is required. Please capture a photo.' });
     }
@@ -44,22 +47,42 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 
     // ── 2. AI Classification ─────────────────────────────────────────────────
-    const aiResult = await analyzeGrievance(imageUrl, description);
-    const { category, department: deptName, summary, severity } = aiResult;
+    const base64ImageOnly = req.file.buffer.toString('base64');
+    let aiResult;
+    try {
+      aiResult = await analyzeGrievance(imageUrl, description, base64ImageOnly, req.file.mimetype);
+    } catch (aiErr) {
+      return res.status(502).json({
+        error: 'AI classification failed. Please try again with a clearer image.'
+      });
+    }
+    const { category, summary, severity } = aiResult;
+    const deptName = normalizeDepartment(aiResult.department);
 
     // ── 3. Match department from Supabase ────────────────────────────────────
     const { data: departments } = await supabase.from('departments').select('*');
+    const deptNameLower = String(deptName || '').trim().toLowerCase();
 
-    let assignedDept = (departments || []).find(d =>
-      deptName.toLowerCase().includes(d.name.toLowerCase()) ||
-      d.name.toLowerCase().includes(deptName.toLowerCase())
-    ) || (departments?.[0] ?? null);
+    const matchedDept = (departments || []).find(
+      (d) => String(d.name || '').trim().toLowerCase() === deptNameLower
+    );
+
+    // Route "others" to the seeded "Other" department row when available.
+    const otherDept = (departments || []).find(
+      (d) => String(d.name || '').trim().toLowerCase() === 'other'
+    );
+    const assignedDept =
+      deptNameLower === 'others' ? (otherDept || null) : (matchedDept || null);
 
     // ── 4. Insert complaint into Supabase ────────────────────────────────────
+    // Sanitize user_id — only pass a real UUID (not the mock bypass string)
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const safeUserId = user_id && UUID_REGEX.test(user_id) ? user_id : null;
+
     const { data: complaint, error: dbError } = await supabase
       .from('complaints')
       .insert([{
-        user_id:         user_id   || null,
+        user_id:         safeUserId,
         user_email:      user_email || null,
         description:     description || summary,
         image_url:       imageUrl,
@@ -70,7 +93,7 @@ router.post('/', upload.single('image'), async (req, res) => {
         severity,
         ai_summary:      summary,
         department_id:   assignedDept?.id    || null,
-        department_name: assignedDept?.name  || deptName,
+        department_name: assignedDept?.name  || (deptNameLower === 'others' ? 'Other' : deptName),
         status:          'pending',
       }])
       .select()
@@ -81,28 +104,28 @@ router.post('/', upload.single('image'), async (req, res) => {
       throw dbError;
     }
 
-    // ── 5. Send confirmation email ────────────────────────────────────────────
+    // ── 5. Send confirmation email + SMS ─────────────────────────────────────
     if (user_email) {
       try {
         await sendComplaintReceivedMail(
           user_email,
           complaint.id,
-          assignedDept?.name || deptName,
+          assignedDept?.name || (deptNameLower === 'others' ? 'Other' : deptName),
           category,
           severity,
           summary
         );
       } catch (mailErr) {
-        // Non-fatal — log but don't fail the request
         console.error('Email sending failed:', mailErr.message);
       }
     }
+
 
     res.status(201).json({
       success:      true,
       complaint_id: complaint.id,
       category,
-      department:   assignedDept?.name || deptName,
+      department:   assignedDept?.name || (deptNameLower === 'others' ? 'Other' : deptName),
       severity,
       summary,
       image_url:    imageUrl,
@@ -203,14 +226,16 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({ error: `Status must be one of: ${allowed.join(', ')}` });
     }
 
-    // Fetch complaint for email
+    // Fetch complaint + user phone for notifications
     const { data: complaint, error: fetchErr } = await supabase
       .from('complaints')
-      .select('user_email, department_name, category')
+      .select('user_id, user_email, department_name, category')
       .eq('id', req.params.id)
       .single();
 
     if (fetchErr) throw fetchErr;
+
+
 
     // Update status
     const { error } = await supabase
@@ -220,7 +245,7 @@ router.patch('/:id/status', async (req, res) => {
 
     if (error) throw error;
 
-    // Email user about status change
+    // Email + SMS on status change
     if (complaint?.user_email) {
       try {
         await sendStatusUpdateMail(
@@ -233,6 +258,7 @@ router.patch('/:id/status', async (req, res) => {
         console.error('Status email error:', mailErr.message);
       }
     }
+
 
     res.json({ success: true, status });
   } catch (err) {
@@ -255,12 +281,14 @@ router.post('/:id/complete', upload.single('completion_image'), async (req, res)
     const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     const { url: completionImageUrl } = await uploadImage(base64, 'completions');
 
-    // Get complaint for email
+    // Get complaint + user phone for notifications
     const { data: complaint } = await supabase
       .from('complaints')
-      .select('user_email')
+      .select('user_id, user_email')
       .eq('id', id)
       .single();
+
+
 
     // Update to completed
     const { error } = await supabase
@@ -274,7 +302,7 @@ router.post('/:id/complete', upload.single('completion_image'), async (req, res)
 
     if (error) throw error;
 
-    // Send resolution email
+    // Email + SMS on completion
     if (complaint?.user_email) {
       try {
         await sendComplaintCompletedMail(complaint.user_email, id, completionImageUrl);
@@ -282,6 +310,7 @@ router.post('/:id/complete', upload.single('completion_image'), async (req, res)
         console.error('Completion email error:', mailErr.message);
       }
     }
+
 
     res.json({ success: true, completion_image_url: completionImageUrl, status: 'completed' });
 
