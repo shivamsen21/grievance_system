@@ -1,178 +1,694 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Department Dashboard — Smart City Report</title>
-  <link rel="stylesheet" href="./style.css">
-  <style>
-    /* Modal for completion image upload */
-    #completion-modal {
-      position: fixed; inset: 0;
-      background: rgba(3,7,18,0.8);
-      backdrop-filter: blur(8px);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 9999;
-      opacity: 0; pointer-events: none;
-      transition: opacity .25s ease;
-    }
-    #completion-modal.show { opacity: 1; pointer-events: all; }
-    .comp-modal-box {
-      background: #0f172a;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 1.5rem;
-      padding: 2.5rem 2rem 2rem;
-      max-width: 28rem; width: 90%;
-      text-align: center;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
-      transform: translateY(24px) scale(0.97);
-      transition: transform .25s ease;
-    }
-    #completion-modal.show .comp-modal-box { transform: translateY(0) scale(1); }
-    
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .status-pending { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .status-in_process { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-    .status-completed { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Department Portal — Smart City</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#05070f;
+  --surface:#0d1117;
+  --surface2:#141b27;
+  --surface3:#1a2235;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --text:#f0f4ff;
+  --text2:rgba(240,244,255,0.55);
+  --text3:rgba(240,244,255,0.3);
+  --accent:#3b82f6;
+  --accent-glow:rgba(59,130,246,0.25);
+  --green:#10b981;
+  --green-glow:rgba(16,185,129,0.2);
+  --amber:#f59e0b;
+  --red:#f87171;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'DM Mono',monospace;
+  --r-sm:8px;
+  --r-md:12px;
+  --r-lg:18px;
+  --r-xl:24px;
+  --shadow:0 2px 24px rgba(0,0,0,0.5);
+  --shadow-lg:0 8px 48px rgba(0,0,0,0.6);
+}
+html{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+body{background:var(--bg);min-height:100vh;overflow-x:hidden}
 
-    /* toast */
-    #toast {
-      position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(80px);
-      background:#1e293b; border:1px solid rgba(255,255,255,0.12);
-      color:#f1f5f9; padding:.75rem 1.25rem; border-radius:.875rem;
-      font-size:.875rem; font-weight:500; white-space:nowrap;
-      box-shadow:0 8px 32px rgba(0,0,0,0.4);
-      transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s;
-      opacity:0; z-index:9999;
-    }
-    #toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
-  </style>
+/* ── ANIMATED BACKGROUND ─────────────────────────── */
+.bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg-orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.12;animation:drift 18s ease-in-out infinite}
+.bg-orb:nth-child(1){width:600px;height:600px;background:#3b82f6;top:-200px;left:-100px;animation-delay:0s}
+.bg-orb:nth-child(2){width:500px;height:500px;background:#10b981;top:50%;right:-150px;animation-delay:-7s}
+.bg-orb:nth-child(3){width:400px;height:400px;background:#8b5cf6;bottom:-100px;left:30%;animation-delay:-13s}
+.bg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:48px 48px}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-30px) scale(1.05)}66%{transform:translate(-20px,20px) scale(0.97)}}
+
+/* ── NAVBAR ──────────────────────────────────────── */
+.navbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(5,7,15,0.75);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border-bottom:1px solid var(--border);
+  padding:0 1.5rem;
+}
+.nav-inner{max-width:1140px;margin:0 auto;height:60px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.nav-brand{display:flex;align-items:center;gap:.7rem}
+.nav-logo{width:34px;height:34px;border-radius:var(--r-sm);background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 20px rgba(16,185,129,0.35)}
+.nav-logo svg{display:block}
+.nav-title{font-size:.9rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.nav-sub{font-size:.72rem;color:var(--text3);margin-top:1px}
+.nav-right{display:flex;align-items:center;gap:.75rem;flex-shrink:0}
+.dept-pill{display:flex;align-items:center;gap:.4rem;padding:.3rem .65rem;border-radius:999px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);font-size:.75rem;font-weight:600;color:#34d399}
+.dept-dot{width:6px;height:6px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981;flex-shrink:0;animation:pulse-dot 2s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+.btn-signout{font-size:.78rem;font-weight:600;color:var(--text3);background:none;border:1px solid var(--border2);border-radius:var(--r-sm);padding:.3rem .65rem;cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+.btn-signout:hover{color:#f87171;border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.05)}
+
+/* ── MAIN LAYOUT ─────────────────────────────────── */
+.main{max-width:1140px;margin:0 auto;padding:2rem 1.5rem;position:relative;z-index:10}
+
+/* ── PAGE HEADER ─────────────────────────────────── */
+.page-header{margin-bottom:2rem;animation:fadeUp .5s ease both}
+.page-header h1{font-size:1.75rem;font-weight:700;color:var(--text);letter-spacing:-.025em;line-height:1.2}
+.page-header p{font-size:.9rem;color:var(--text2);margin-top:.4rem}
+
+/* ── STATS ROW ───────────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:2rem;animation:fadeUp .5s .1s ease both}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:1rem 1.1rem;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+.stat-card::before{content:'';position:absolute;inset:0;border-radius:inherit;opacity:0;transition:opacity .2s}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.stat-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.5rem}
+.stat-num{font-size:1.85rem;font-weight:700;line-height:1;letter-spacing:-.03em}
+.stat-num.c-blue{color:#60a5fa}
+.stat-num.c-amber{color:#fbbf24}
+.stat-num.c-blue2{color:#818cf8}
+.stat-num.c-green{color:#34d399}
+.stat-trend{font-size:.75rem;margin-top:.35rem;display:flex;align-items:center;gap:.25rem}
+
+/* ── TABS ────────────────────────────────────────── */
+.tabs-wrap{display:flex;gap:.5rem;margin-bottom:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:.3rem;animation:fadeUp .5s .2s ease both}
+.tab-btn{flex:1;padding:.55rem 1rem;border-radius:calc(var(--r-md) - 2px);font-size:.85rem;font-weight:600;color:var(--text3);background:none;border:none;cursor:pointer;transition:color .2s,background .2s;display:flex;align-items:center;justify-content:center;gap:.4rem}
+.tab-btn.active{color:var(--text);background:var(--surface2)}
+.tab-btn:hover:not(.active){color:var(--text2)}
+.tab-icon{width:15px;height:15px;flex-shrink:0}
+.tab-pane{display:none;animation:fadeUp .35s ease both}
+.tab-pane.active{display:block}
+
+/* ── SECTION CARD ────────────────────────────────── */
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.5rem;animation:fadeUp .5s .25s ease both}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:1rem}
+.section-title{font-size:1rem;font-weight:700;color:var(--text)}
+.btn-refresh{width:34px;height:34px;border-radius:var(--r-sm);border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:background .2s,color .2s,transform .3s}
+.btn-refresh:hover{background:var(--surface2);color:var(--text2)}
+.btn-refresh.spinning{animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SKELETON ────────────────────────────────────── */
+.skeleton{border-radius:var(--r-md);overflow:hidden;position:relative}
+.skeleton::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 25%,rgba(255,255,255,.05) 50%,transparent 75%);background-size:200% 100%;animation:shimmer 1.6s ease-in-out infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{background:var(--surface2);border-radius:var(--r-md);margin-bottom:.75rem}
+
+/* ── GRIEVANCE CARDS ─────────────────────────────── */
+.grievance-list{display:flex;flex-direction:column;gap:.85rem}
+.g-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);padding:1.1rem;display:flex;gap:1rem;align-items:flex-start;transition:border-color .25s,transform .25s,box-shadow .25s;animation:fadeUp .4s ease both}
+.g-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow)}
+.g-thumb{width:88px;height:88px;border-radius:var(--r-sm);overflow:hidden;flex-shrink:0;border:1px solid var(--border);background:var(--surface3)}
+.g-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.g-thumb:hover img{transform:scale(1.07)}
+.g-body{flex:1;min-width:0}
+.g-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap}
+.g-category{font-size:.95rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.g-time{font-size:.72rem;color:var(--text3);white-space:nowrap;font-family:var(--mono)}
+.g-desc{font-size:.83rem;color:var(--text2);line-height:1.55;margin-bottom:.85rem;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.g-footer{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+
+/* ── BADGES ──────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .6rem;border-radius:999px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.badge-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.badge-pending{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
+.badge-pending .badge-dot{background:#f59e0b}
+.badge-in_process{background:rgba(59,130,246,.12);color:#60a5fa;border:1px solid rgba(59,130,246,.25)}
+.badge-in_process .badge-dot{background:#3b82f6}
+.badge-completed{background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.25)}
+.badge-completed .badge-dot{background:#10b981}
+
+/* ── ACTION BUTTONS ──────────────────────────────── */
+.btn-action{padding:.35rem .75rem;border-radius:var(--r-sm);font-size:.77rem;font-weight:700;cursor:pointer;border:none;transition:opacity .2s,transform .15s}
+.btn-action:active{transform:scale(.97)}
+.btn-in-process{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
+.btn-in-process:hover{background:rgba(59,130,246,.22)}
+.btn-complete{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+.btn-complete:hover{opacity:.9}
+.btn-view-photo{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .6rem;border-radius:var(--r-sm);font-size:.75rem;font-weight:600;color:var(--text2);background:var(--surface3);border:1px solid var(--border2);text-decoration:none;transition:border-color .2s}
+.btn-view-photo:hover{border-color:rgba(255,255,255,.25);color:var(--text)}
+.btn-view-photo img{width:24px;height:24px;border-radius:4px;object-fit:cover}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text3)}
+.empty-icon{font-size:3rem;margin-bottom:.75rem;opacity:.4}
+.empty-state p{font-size:.9rem}
+
+/* ── ANALYTICS ───────────────────────────────────── */
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:680px){.analytics-grid{grid-template-columns:1fr}}
+.chart-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);padding:1.25rem}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:.3rem}
+.chart-sub{font-size:.75rem;color:var(--text3);margin-bottom:1rem}
+.chart-wrap{position:relative;width:100%}
+.legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:.75rem;font-size:.75rem;color:var(--text2)}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+/* ── MODAL ───────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(5,7,15,0.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s ease;padding:1rem}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-xl);padding:2rem;max-width:26rem;width:100%;transform:translateY(20px) scale(.97);transition:transform .25s ease;box-shadow:var(--shadow-lg)}
+.modal-overlay.show .modal-box{transform:translateY(0) scale(1)}
+.modal-title{font-size:1.15rem;font-weight:700;color:var(--text);margin-bottom:.4rem}
+.modal-desc{font-size:.85rem;color:var(--text2);margin-bottom:1.5rem;line-height:1.55}
+.form-label{display:block;font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:.5rem}
+.btn-group{display:flex;gap:.5rem;margin-bottom:1rem}
+.btn-cam,.btn-gal{padding:.45rem .8rem;border-radius:var(--r-sm);font-size:.78rem;font-weight:700;cursor:pointer;border:none;transition:background .2s,opacity .2s}
+.btn-cam{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3)}
+.btn-cam:hover{background:rgba(16,185,129,.22)}
+.btn-gal{background:var(--surface2);color:var(--text2);border:1px solid var(--border2)}
+.btn-gal:hover{background:var(--surface3)}
+.file-input-wrap{border:1px dashed var(--border2);border-radius:var(--r-md);padding:.6rem;background:var(--surface2);margin-bottom:1.25rem}
+.file-input-wrap input[type=file]{width:100%;background:none;border:none;color:var(--text2);font-size:.8rem;cursor:pointer}
+.modal-actions{display:flex;gap:.75rem}
+.btn-cancel{flex:1;padding:.65rem;border-radius:var(--r-md);background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-size:.85rem;font-weight:600;cursor:pointer;transition:background .2s}
+.btn-cancel:hover{background:var(--surface3)}
+.btn-submit{flex:1;padding:.65rem;border-radius:var(--r-md);background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:.85rem;font-weight:700;border:none;cursor:pointer;transition:opacity .2s}
+.btn-submit:hover{opacity:.9}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── TOAST ───────────────────────────────────────── */
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:.65rem 1.1rem;border-radius:var(--r-md);font-size:.83rem;font-weight:600;white-space:nowrap;box-shadow:var(--shadow);transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .25s;opacity:0;z-index:9999}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+#toast.success{border-color:rgba(16,185,129,.3);color:#34d399}
+#toast.error{border-color:rgba(248,113,113,.3);color:#f87171}
+
+/* ── ANIMATIONS ──────────────────────────────────── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.stagger-1{animation-delay:.05s}
+.stagger-2{animation-delay:.1s}
+.stagger-3{animation-delay:.15s}
+.stagger-4{animation-delay:.2s}
+
+/* ── RESPONSIVE ──────────────────────────────────── */
+@media(max-width:600px){
+  .main{padding:1.25rem 1rem}
+  .page-header h1{font-size:1.35rem}
+  .g-card{flex-direction:column}
+  .g-thumb{width:100%;height:160px}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .nav-sub{display:none}
+  .tab-btn span.label{display:none}
+}
+</style>
 </head>
-<body style="background:#030712; min-height:100vh;">
+<body>
 
-  <!-- Background -->
-  <div class="mesh-bg"><div class="mesh-blob3"></div></div>
-  <div class="grid-overlay"></div>
+<div class="bg-canvas">
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-grid"></div>
+</div>
 
-  <!-- ── NAVBAR ────────────────────────────────────────────────────────── -->
-  <nav class="navbar">
-    <div style="max-width:1100px; margin:0 auto; padding:.875rem 1.5rem; display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; align-items:center; gap:.75rem;">
-        <div style="width:36px;height:36px;border-radius:.625rem;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(16,185,129,0.4);">
-          <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-          </svg>
-        </div>
-        <span style="font-weight:700; font-size:1rem; color:#f1f5f9; letter-spacing:-.01em;">Department Portal</span>
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="nav-logo">
+        <svg width="18" height="18" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
       </div>
-
-      <div style="display:flex; align-items:center; gap:1rem;">
-        <div id="dept-badge" style="display:flex;align-items:center;gap:.5rem;padding:.375rem .75rem;border-radius:.625rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);">
-          <div style="width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 6px #10b981;"></div>
-          <span id="dept-name-display" style="font-size:.8rem;color:rgba(255,255,255,0.6);font-weight:500;">Department</span>
-        </div>
-        <button onclick="logout()"
-          style="font-size:.8rem;font-weight:600;color:rgba(255,255,255,0.4);background:none;border:1px solid rgba(255,255,255,0.1);border-radius:.5rem;padding:.375rem .75rem;cursor:pointer;transition:color .2s,border-color .2s;"
-          onmouseover="this.style.color='#f87171';this.style.borderColor='rgba(239,68,68,0.3)'"
-          onmouseout="this.style.color='rgba(255,255,255,0.4)';this.style.borderColor='rgba(255,255,255,0.1)'">
-          Sign out
-        </button>
+      <div>
+        <div class="nav-title">Department Portal</div>
+        <div class="nav-sub">Smart City Grievance System</div>
       </div>
     </div>
-  </nav>
-
-  <!-- ── MAIN LAYOUT ──────────────────────────────────────────────────── -->
-  <main style="max-width:1100px; margin:0 auto; padding:2rem 1.5rem; position:relative; z-index:10;">
-
-    <section class="glass fade-up" style="padding:1.75rem;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
-        <div style="display:flex;align-items:center;gap:.75rem;">
-          <h2 style="font-size:1.25rem;font-weight:700;color:#f1f5f9;margin:0;">Assigned Grievances</h2>
-        </div>
-        <button id="btn-refresh-reports"
-          style="width:36px;height:36px;border-radius:.5rem;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:background .2s;"
-          title="Refresh reports">↻</button>
+    <div class="nav-right">
+      <div class="dept-pill">
+        <div class="dept-dot"></div>
+        <span id="dept-name-display">Department</span>
       </div>
+      <button class="btn-signout" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+</nav>
 
-      <div id="grievances-list" style="display:grid; grid-template-columns: 1fr; gap: 1rem;">
-        <!-- Shimmer placeholders -->
-        <div class="shimmer" style="height:140px;"></div>
-        <div class="shimmer" style="height:140px;opacity:.7;"></div>
+<!-- MAIN -->
+<main class="main">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Grievance Management</h1>
+    <p id="dept-subtitle">Loading department information…</p>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card skeleton skel-card" style="height:80px"></div>
+    <div class="stat-card skeleton skel-card" style="height:80px"></div>
+    <div class="stat-card skeleton skel-card" style="height:80px"></div>
+    <div class="stat-card skeleton skel-card" style="height:80px"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-wrap">
+    <button class="tab-btn active" onclick="switchTab('grievances',this)">
+      <svg class="tab-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span class="label">Grievances</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('analytics',this)">
+      <svg class="tab-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <span class="label">Analytics</span>
+    </button>
+  </div>
+
+  <!-- Grievances Tab -->
+  <div class="tab-pane active" id="tab-grievances">
+    <div class="section-card">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Assigned Grievances</div>
+        </div>
+        <button class="btn-refresh" id="btn-refresh" title="Refresh">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
       </div>
-    </section>
-
-  </main>
-
-  <!-- ── TOAST ────────────────────────────────────────────────────────── -->
-  <div id="toast"></div>
-
-  <!-- ── COMPLETION MODAL ─────────────────────────────────────────────── -->
-  <div id="completion-modal">
-    <div class="comp-modal-box">
-      <h3 style="font-size:1.25rem; font-weight:700; color:#f1f5f9; margin-bottom:1rem;">Mark as Completed</h3>
-      <p style="font-size:0.9rem; color:rgba(255,255,255,0.6); margin-bottom:1.5rem;">
-        Please upload a photo proving the issue has been resolved.
-      </p>
-
-      <form id="completion-form">
-        <input type="hidden" id="completion-complaint-id" />
-        
-        <div style="margin-bottom: 1.5rem;">
-          <label style="display:block; margin-bottom: 0.5rem; color: rgba(255,255,255,0.8); font-size: 0.9rem;">Resolution Photo</label>
-          <div style="display:flex; gap:.6rem; margin-bottom:.6rem; flex-wrap:wrap;">
-            <button type="button" id="btn-open-camera"
-              style="padding:.5rem .8rem;border-radius:.5rem;border:1px solid rgba(16,185,129,.45);background:rgba(16,185,129,.15);color:#6ee7b7;cursor:pointer;font-size:.82rem;font-weight:600;">
-              Open Camera
-            </button>
-            <button type="button" id="btn-open-gallery"
-              style="padding:.5rem .8rem;border-radius:.5rem;border:1px solid rgba(148,163,184,.35);background:rgba(255,255,255,.06);color:#e2e8f0;cursor:pointer;font-size:.82rem;font-weight:600;">
-              Choose from Gallery
-            </button>
-          </div>
-          <input type="file" id="completion-image" accept="image/*" required
-            style="width: 100%; padding: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; color: white;" />
-        </div>
-
-        <div style="display: flex; gap: 1rem;">
-          <button type="button" onclick="closeCompletionModal()"
-            style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; cursor: pointer;">
-            Cancel
-          </button>
-          <button type="submit" class="btn-primary" style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; background: linear-gradient(135deg,#10b981,#059669); color: white; border: none; font-weight: bold; cursor: pointer;">
-            Submit
-          </button>
-        </div>
-      </form>
+      <div class="grievance-list" id="grievances-list">
+        <!-- skeleton -->
+        <div class="skeleton skel-card" style="height:110px"></div>
+        <div class="skeleton skel-card" style="height:110px;opacity:.75"></div>
+        <div class="skeleton skel-card" style="height:110px;opacity:.5"></div>
+      </div>
     </div>
   </div>
 
-  <script type="module" src="./department.js"></script>
+  <!-- Analytics Tab -->
+  <div class="tab-pane" id="tab-analytics">
+    <div class="analytics-grid" id="analytics-grid">
+      <!-- Status Distribution -->
+      <div class="chart-card">
+        <div class="chart-title">Status Distribution</div>
+        <div class="chart-sub">Breakdown of complaint statuses</div>
+        <div class="legend-row" id="legend-status"></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chart-status" role="img" aria-label="Doughnut chart showing status distribution of complaints"></canvas></div>
+      </div>
 
-  <script>
-    // Show dept name in navbar
-    const _dept = JSON.parse(sessionStorage.getItem('grievance_dept') || 'null');
-    if (!_dept) {
-      window.location.href = '/index.html'; // Redirect to login if not logged in
+      <!-- Resolution Rate -->
+      <div class="chart-card">
+        <div class="chart-title">Resolution Rate</div>
+        <div class="chart-sub">Completion vs pending over time</div>
+        <div class="legend-row" id="legend-res"></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chart-resolution" role="img" aria-label="Bar chart showing resolution rate over months"></canvas></div>
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="chart-card full">
+        <div class="chart-title">Complaints by Category</div>
+        <div class="chart-sub">Volume of issues reported per category</div>
+        <div class="legend-row" id="legend-cat"></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chart-category" role="img" aria-label="Horizontal bar chart showing number of complaints per category"></canvas></div>
+      </div>
+
+      <!-- Weekly Trend -->
+      <div class="chart-card full">
+        <div class="chart-title">Weekly Submission Trend</div>
+        <div class="chart-sub">Number of new complaints per week</div>
+        <div class="legend-row" id="legend-trend"></div>
+        <div class="chart-wrap" style="height:180px"><canvas id="chart-trend" role="img" aria-label="Line chart showing weekly complaint submissions"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- COMPLETION MODAL -->
+<div class="modal-overlay" id="completion-modal">
+  <div class="modal-box">
+    <div class="modal-title">Mark as Completed</div>
+    <div class="modal-desc">Upload a resolution photo to confirm this issue has been resolved.</div>
+    <form id="completion-form">
+      <input type="hidden" id="completion-complaint-id"/>
+      <label class="form-label">Resolution Photo</label>
+      <div class="btn-group">
+        <button type="button" class="btn-cam" id="btn-open-camera">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+          Camera
+        </button>
+        <button type="button" class="btn-gal" id="btn-open-gallery">Gallery</button>
+      </div>
+      <div class="file-input-wrap">
+        <input type="file" id="completion-image" accept="image/*" required/>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-submit" id="btn-modal-submit">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API_URL = '/api';
+
+/* ── SESSION CHECK ────────────────────────────────── */
+const deptData = JSON.parse(sessionStorage.getItem('grievance_dept') || 'null');
+if (!deptData?.id) {
+  // For demo purposes, use mock data
+  window._DEMO = true;
+  window._MOCK_DEPT = { id: 'demo-dept', name: 'Public Works' };
+} else {
+  window._DEMO = false;
+}
+const dept = window._DEMO ? window._MOCK_DEPT : deptData;
+
+document.getElementById('dept-name-display').textContent = dept.name || 'Department';
+document.getElementById('dept-subtitle').textContent = `Viewing grievances assigned to ${dept.name || 'your department'}`;
+
+function logout() {
+  sessionStorage.removeItem('grievance_dept');
+  window.location.href = '/index.html';
+}
+
+/* ── MOCK DATA (demo mode) ────────────────────────── */
+const MOCK_COMPLAINTS = [
+  { id: '1', category: 'Road Damage', description: 'Large pothole on MG Road causing accidents daily. Requires urgent repair before monsoon.', status: 'pending', created_at: new Date(Date.now()-86400000*2).toISOString(), image_url: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=200', completion_image_url: null },
+  { id: '2', category: 'Street Light', description: 'Three street lights non-functional in Sector 7, creating unsafe conditions at night.', status: 'in_process', created_at: new Date(Date.now()-86400000*5).toISOString(), image_url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200', completion_image_url: null },
+  { id: '3', category: 'Garbage Collection', description: 'Overflowing bins near market area for 4 days. Health hazard for residents.', status: 'completed', created_at: new Date(Date.now()-86400000*8).toISOString(), image_url: 'https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?w=200', completion_image_url: 'https://images.unsplash.com/photo-1604869515882-4d10fa4b0492?w=200' },
+  { id: '4', category: 'Water Supply', description: 'No water supply in Block C for 2 days. Multiple households affected.', status: 'pending', created_at: new Date(Date.now()-86400000).toISOString(), image_url: 'https://images.unsplash.com/photo-1504813184591-01572f98c85f?w=200', completion_image_url: null },
+  { id: '5', category: 'Sewage', description: 'Sewer line blocked near school resulting in overflow on the road.', status: 'in_process', created_at: new Date(Date.now()-86400000*3).toISOString(), image_url: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=200', completion_image_url: null },
+];
+
+let complaints = [];
+
+/* ── TABS ─────────────────────────────────────────── */
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+  if (id === 'analytics') renderAnalytics();
+}
+
+/* ── STATS ────────────────────────────────────────── */
+function renderStats(data) {
+  const total = data.length;
+  const pending = data.filter(c => c.status === 'pending').length;
+  const inProcess = data.filter(c => c.status === 'in_process').length;
+  const completed = data.filter(c => c.status === 'completed').length;
+
+  const el = document.getElementById('stats-row');
+  el.innerHTML = `
+    <div class="stat-card stagger-1" style="animation:fadeUp .4s ease both">
+      <div class="stat-label">Total Assigned</div>
+      <div class="stat-num c-blue">${total}</div>
+      <div class="stat-trend" style="color:var(--text3)">All grievances</div>
+    </div>
+    <div class="stat-card stagger-2" style="animation:fadeUp .4s .05s ease both">
+      <div class="stat-label">Pending</div>
+      <div class="stat-num c-amber">${pending}</div>
+      <div class="stat-trend" style="color:#fbbf24">Awaiting action</div>
+    </div>
+    <div class="stat-card stagger-3" style="animation:fadeUp .4s .1s ease both">
+      <div class="stat-label">In Process</div>
+      <div class="stat-num c-blue2">${inProcess}</div>
+      <div class="stat-trend" style="color:#818cf8">Being handled</div>
+    </div>
+    <div class="stat-card stagger-4" style="animation:fadeUp .4s .15s ease both">
+      <div class="stat-label">Completed</div>
+      <div class="stat-num c-green">${completed}</div>
+      <div class="stat-trend" style="color:#34d399">${total > 0 ? Math.round(completed/total*100) : 0}% resolution rate</div>
+    </div>
+  `;
+}
+
+/* ── LOAD GRIEVANCES ──────────────────────────────── */
+async function loadGrievances() {
+  const listEl = document.getElementById('grievances-list');
+  const btn = document.getElementById('btn-refresh');
+  btn.classList.add('spinning');
+  listEl.innerHTML = `
+    <div class="skeleton skel-card" style="height:110px"></div>
+    <div class="skeleton skel-card" style="height:110px;opacity:.75"></div>
+    <div class="skeleton skel-card" style="height:110px;opacity:.5"></div>
+  `;
+
+  try {
+    if (window._DEMO) {
+      await new Promise(r => setTimeout(r, 900));
+      complaints = MOCK_COMPLAINTS;
     } else {
-      document.getElementById('dept-name-display').textContent = _dept.name || 'Department';
+      const res = await fetch(`${API_URL}/complaints/department/${dept.id}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      complaints = await res.json();
     }
+    renderStats(complaints);
+    renderGrievances(complaints, listEl);
+  } catch (err) {
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--red)">Error: ${err.message}</p></div>`;
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
 
-    function logout() {
-      sessionStorage.removeItem('grievance_dept');
-      window.location.href = '/index.html';
-    }
+/* ── RENDER GRIEVANCES ────────────────────────────── */
+function renderGrievances(data, listEl) {
+  if (!data || data.length === 0) {
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No grievances assigned yet.</p></div>`;
+    return;
+  }
+  listEl.innerHTML = '';
+  data.forEach((c, i) => {
+    const dateStr = new Date(c.created_at).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const statusMap = { pending: ['badge-pending','Pending'], in_process: ['badge-in_process','In Process'], completed: ['badge-completed','Completed'] };
+    const [badgeClass, statusText] = statusMap[c.status] || ['badge-pending','Unknown'];
 
-    function closeCompletionModal() {
-      document.getElementById('completion-modal').classList.remove('show');
+    const card = document.createElement('div');
+    card.className = 'g-card';
+    card.style.animationDelay = `${i * 0.07}s`;
+    card.innerHTML = `
+      <a href="${c.image_url}" target="_blank" rel="noopener" class="g-thumb">
+        <img src="${c.image_url}" alt="Issue photo" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23141b27%22/><text y=%2260%22 x=%2235%22 font-size=%2230%22>📷</text></svg>'"/>
+      </a>
+      <div class="g-body">
+        <div class="g-top">
+          <div>
+            <span class="badge ${badgeClass}"><span class="badge-dot"></span>${statusText}</span>
+            <div class="g-category" style="margin-top:.3rem">${c.category}</div>
+          </div>
+          <span class="g-time">${dateStr}</span>
+        </div>
+        <div class="g-desc">${c.description || c.ai_summary || 'No description provided.'}</div>
+        <div class="g-footer">
+          ${c.status === 'pending' ? `<button class="btn-action btn-in-process" data-id="${c.id}" data-action="in_process">Mark In Process</button>` : ''}
+          ${c.status !== 'completed' ? `<button class="btn-action btn-complete" data-id="${c.id}" data-action="complete">✔ Mark Completed</button>` : ''}
+          ${c.completion_image_url ? `<a href="${c.completion_image_url}" target="_blank" rel="noopener" class="btn-view-photo"><img src="${c.completion_image_url}" alt="Resolution"/>View Resolution</a>` : ''}
+        </div>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
+
+  listEl.querySelectorAll('.btn-action').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = e.currentTarget.getAttribute('data-id');
+      const action = e.currentTarget.getAttribute('data-action');
+      if (action === 'complete') {
+        document.getElementById('completion-complaint-id').value = id;
+        document.getElementById('completion-image').value = '';
+        document.getElementById('completion-modal').classList.add('show');
+      } else {
+        updateStatus(id, action, e.currentTarget);
+      }
+    });
+  });
+}
+
+/* ── STATUS UPDATE ────────────────────────────────── */
+async function updateStatus(id, status, btn) {
+  const orig = btn.textContent;
+  btn.textContent = '…';
+  btn.disabled = true;
+  try {
+    if (window._DEMO) {
+      await new Promise(r => setTimeout(r, 600));
+      const c = complaints.find(x => x.id === id);
+      if (c) c.status = status;
+    } else {
+      const res = await fetch(`${API_URL}/complaints/${id}/status`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status}) });
+      if (!res.ok) throw new Error('Failed');
     }
-  </script>
+    showToast('Status updated!', 'success');
+    renderStats(complaints);
+    renderGrievances(complaints, document.getElementById('grievances-list'));
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+/* ── MODAL CLOSE ──────────────────────────────────── */
+function closeModal() {
+  document.getElementById('completion-modal').classList.remove('show');
+}
+document.getElementById('completion-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+/* ── CAMERA / GALLERY ─────────────────────────────── */
+document.getElementById('btn-open-camera').addEventListener('click', () => {
+  const inp = document.getElementById('completion-image');
+  inp.setAttribute('capture', 'environment');
+  inp.click();
+});
+document.getElementById('btn-open-gallery').addEventListener('click', () => {
+  const inp = document.getElementById('completion-image');
+  inp.removeAttribute('capture');
+  inp.click();
+});
+
+/* ── COMPLETION FORM ──────────────────────────────── */
+document.getElementById('completion-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const id = document.getElementById('completion-complaint-id').value;
+  const fileInput = document.getElementById('completion-image');
+  if (!fileInput.files[0]) { showToast('Please select a photo.', 'error'); return; }
+  const submitBtn = document.getElementById('btn-modal-submit');
+  submitBtn.textContent = 'Uploading…'; submitBtn.disabled = true;
+  try {
+    if (window._DEMO) {
+      await new Promise(r => setTimeout(r, 800));
+      const c = complaints.find(x => x.id === id);
+      if (c) { c.status = 'completed'; c.completion_image_url = URL.createObjectURL(fileInput.files[0]); }
+    } else {
+      const fd = new FormData();
+      fd.append('completion_image', fileInput.files[0]);
+      const res = await fetch(`${API_URL}/complaints/${id}/complete`, { method:'POST', body: fd });
+      if (!res.ok) throw new Error('Failed');
+      const updated = await fetch(`${API_URL}/complaints/department/${dept.id}`);
+      complaints = await updated.json();
+    }
+    showToast('Marked as completed!', 'success');
+    closeModal();
+    renderStats(complaints);
+    renderGrievances(complaints, document.getElementById('grievances-list'));
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    submitBtn.textContent = 'Submit'; submitBtn.disabled = false;
+  }
+});
+
+/* ── ANALYTICS ────────────────────────────────────── */
+let chartsRendered = false;
+function renderAnalytics() {
+  if (chartsRendered) return;
+  chartsRendered = true;
+
+  const data = complaints.length ? complaints : MOCK_COMPLAINTS;
+  const pending = data.filter(c=>c.status==='pending').length;
+  const inProcess = data.filter(c=>c.status==='in_process').length;
+  const completed = data.filter(c=>c.status==='completed').length;
+
+  const catMap = {};
+  data.forEach(c => { catMap[c.category] = (catMap[c.category]||0) + 1; });
+  const cats = Object.keys(catMap);
+  const catVals = Object.values(catMap);
+
+  const palette = { blue:'#60a5fa', amber:'#fbbf24', green:'#34d399', purple:'#a78bfa', coral:'#f87171', teal:'#2dd4bf' };
+  const barColors = [palette.blue, palette.amber, palette.green, palette.purple, palette.coral, palette.teal];
+
+  const gridColor = 'rgba(255,255,255,0.06)';
+  const tickColor = 'rgba(240,244,255,0.4)';
+  const font = { family: 'DM Sans, system-ui', size: 11 };
+
+  /* Doughnut */
+  document.getElementById('legend-status').innerHTML = `
+    <span class="legend-item"><span class="legend-dot" style="background:${palette.amber}"></span>Pending ${pending}</span>
+    <span class="legend-item"><span class="legend-dot" style="background:${palette.blue}"></span>In Process ${inProcess}</span>
+    <span class="legend-item"><span class="legend-dot" style="background:${palette.green}"></span>Completed ${completed}</span>
+  `;
+  new Chart(document.getElementById('chart-status'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Pending','In Process','Completed'],
+      datasets: [{ data: [pending, inProcess, completed], backgroundColor: [palette.amber, palette.blue, palette.green], borderWidth: 3, borderColor: '#0d1117', hoverOffset: 8 }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'68%', plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1a2235', titleColor:'#f0f4ff', bodyColor:'rgba(240,244,255,.7)', borderColor:'rgba(255,255,255,.1)', borderWidth:1 } } }
+  });
+
+  /* Bar – resolution by month (mock weekly) */
+  const months = ['Jan','Feb','Mar','Apr','May','Jun'];
+  const resolvedData = [3,5,4,7,6,completed||2];
+  const pendingData  = [2,3,4,2,3,pending||1];
+  document.getElementById('legend-res').innerHTML = `
+    <span class="legend-item"><span class="legend-dot" style="background:${palette.green}"></span>Resolved</span>
+    <span class="legend-item"><span class="legend-dot" style="background:${palette.amber}"></span>Pending</span>
+  `;
+  new Chart(document.getElementById('chart-resolution'), {
+    type:'bar',
+    data:{ labels:months, datasets:[
+      { label:'Resolved', data:resolvedData, backgroundColor:palette.green+'40', borderColor:palette.green, borderWidth:2, borderRadius:5 },
+      { label:'Pending',  data:pendingData,  backgroundColor:palette.amber+'30', borderColor:palette.amber, borderWidth:2, borderRadius:5 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1a2235', titleColor:'#f0f4ff', bodyColor:'rgba(240,244,255,.7)', borderColor:'rgba(255,255,255,.1)', borderWidth:1 } }, scales:{ x:{ticks:{color:tickColor, font}, grid:{color:gridColor}}, y:{ticks:{color:tickColor, font, stepSize:2}, grid:{color:gridColor}, beginAtZero:true } } }
+  });
+
+  /* Horizontal bar – categories */
+  document.getElementById('legend-cat').innerHTML = cats.map((c,i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${barColors[i%barColors.length]}"></span>${c} (${catMap[c]})</span>`
+  ).join('');
+  const hbarWrap = document.getElementById('chart-category').parentElement;
+  hbarWrap.style.height = Math.max(180, cats.length * 42 + 40) + 'px';
+  new Chart(document.getElementById('chart-category'), {
+    type:'bar',
+    data:{ labels:cats, datasets:[{ label:'Complaints', data:catVals, backgroundColor:barColors.slice(0,cats.length).map(c=>c+'55'), borderColor:barColors.slice(0,cats.length), borderWidth:2, borderRadius:6 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1a2235', titleColor:'#f0f4ff', bodyColor:'rgba(240,244,255,.7)', borderColor:'rgba(255,255,255,.1)', borderWidth:1 } }, scales:{ x:{ ticks:{color:tickColor,font,stepSize:1}, grid:{color:gridColor}, beginAtZero:true }, y:{ticks:{color:tickColor,font}, grid:{display:false}} } }
+  });
+
+  /* Line – weekly trend */
+  const weeks = ['Wk 1','Wk 2','Wk 3','Wk 4','Wk 5','Wk 6','Wk 7','Wk 8'];
+  const trendData = [2,4,3,6,5,8,6,data.length||7];
+  document.getElementById('legend-trend').innerHTML = `
+    <span class="legend-item"><span class="legend-dot" style="background:${palette.blue}"></span>New Complaints</span>
+  `;
+  new Chart(document.getElementById('chart-trend'), {
+    type:'line',
+    data:{ labels:weeks, datasets:[{ label:'New Complaints', data:trendData, borderColor:palette.blue, backgroundColor:palette.blue+'18', fill:true, tension:.45, pointBackgroundColor:palette.blue, pointRadius:4, pointHoverRadius:6, borderWidth:2.5 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1a2235', titleColor:'#f0f4ff', bodyColor:'rgba(240,244,255,.7)', borderColor:'rgba(255,255,255,.1)', borderWidth:1 } }, scales:{ x:{ticks:{color:tickColor,font}, grid:{color:gridColor}}, y:{ticks:{color:tickColor,font,stepSize:2}, grid:{color:gridColor}, beginAtZero:true} } }
+  });
+}
+
+/* ── TOAST ────────────────────────────────────────── */
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type ? `show ${type}` : 'show';
+  setTimeout(() => t.className = '', 3500);
+}
+
+/* ── REFRESH BUTTON ───────────────────────────────── */
+document.getElementById('btn-refresh').addEventListener('click', () => {
+  chartsRendered = false;
+  loadGrievances();
+});
+
+/* ── INIT ─────────────────────────────────────────── */
+loadGrievances();
+</script>
 </body>
 </html>
