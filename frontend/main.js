@@ -98,35 +98,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitBtn = userLoginForm.querySelector('button[type="submit"]');
     const password = document.getElementById('login-password').value.trim();
 
-    // Determine login mode (email or phone) via the toggle exposed on window
-    const loginMode = (typeof window.getLoginMode === 'function') ? window.getLoginMode() : 'email';
     const email = document.getElementById('login-email').value.trim();
-    const phone = document.getElementById('login-phone')?.value.trim();
 
-    // Validate input based on active mode
-    if (loginMode === 'email' && !email) {
-      return showFormError(userLoginForm, 'Please enter your email address.');
-    }
-    if (loginMode === 'phone') {
-      if (!phone || !/^\d{10}$/.test(phone)) {
-        return showFormError(userLoginForm, 'Please enter a valid 10-digit phone number.');
-      }
-    }
+    if (!email) return showFormError(userLoginForm, 'Please enter your email address.');
     if (!password) return showFormError(userLoginForm, 'Please enter your password.');
 
     const origText = submitBtn.querySelector('span')?.textContent || submitBtn.textContent;
     setSubmitState(submitBtn, 'Signing in…', true);
 
     try {
-      // Build payload — phone login sends { phone, password }, email sends { email, password }
-      const payload = loginMode === 'phone'
-        ? { phone, password }
-        : { email, password };
-
       const resp = await fetch(`${API_BASE}/auth/user/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await resp.json();

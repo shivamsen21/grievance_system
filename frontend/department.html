@@ -148,6 +148,9 @@ body{background:var(--bg);min-height:100vh;overflow-x:hidden}
 .btn-view-photo{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .6rem;border-radius:var(--r-sm);font-size:.75rem;font-weight:600;color:var(--text2);background:var(--surface3);border:1px solid var(--border2);text-decoration:none;transition:border-color .2s}
 .btn-view-photo:hover{border-color:rgba(255,255,255,.25);color:var(--text)}
 .btn-view-photo img{width:24px;height:24px;border-radius:4px;object-fit:cover}
+.btn-map{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .6rem;border-radius:var(--r-sm);font-size:.75rem;font-weight:700;color:#93c5fd;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.35);text-decoration:none}
+.btn-map:hover{background:rgba(59,130,246,.2)}
+.loc-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .5rem;border-radius:999px;font-size:.72rem;color:var(--text2);background:var(--surface3);border:1px solid var(--border)}
 .empty-state{text-align:center;padding:3rem 1rem;color:var(--text3)}
 .empty-icon{font-size:3rem;margin-bottom:.75rem;opacity:.4}
 .empty-state p{font-size:.9rem}
@@ -472,6 +475,10 @@ function renderGrievances(data, listEl) {
   }
   listEl.innerHTML = '';
   data.forEach((c, i) => {
+    const hasCoords = Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng));
+    const mapUrl = hasCoords
+      ? `https://www.google.com/maps?q=${encodeURIComponent(Number(c.lat).toFixed(6) + ',' + Number(c.lng).toFixed(6))}`
+      : '';
     const dateStr = new Date(c.created_at).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     const statusMap = { pending: ['badge-pending','Pending'], in_process: ['badge-in_process','In Process'], completed: ['badge-completed','Completed'] };
     const [badgeClass, statusText] = statusMap[c.status] || ['badge-pending','Unknown'];
@@ -493,6 +500,8 @@ function renderGrievances(data, listEl) {
         </div>
         <div class="g-desc">${c.description || c.ai_summary || 'No description provided.'}</div>
         <div class="g-footer">
+          ${hasCoords ? `<span class="loc-chip">Location: ${Number(c.lat).toFixed(5)}, ${Number(c.lng).toFixed(5)}</span>` : ''}
+          ${hasCoords ? `<a href="${mapUrl}" target="_blank" rel="noopener" class="btn-map">Open Map</a>` : ''}
           ${c.status === 'pending' ? `<button class="btn-action btn-in-process" data-id="${c.id}" data-action="in_process">Mark In Process</button>` : ''}
           ${c.status !== 'completed' ? `<button class="btn-action btn-complete" data-id="${c.id}" data-action="complete">✔ Mark Completed</button>` : ''}
           ${c.completion_image_url ? `<a href="${c.completion_image_url}" target="_blank" rel="noopener" class="btn-view-photo"><img src="${c.completion_image_url}" alt="Resolution"/>View Resolution</a>` : ''}

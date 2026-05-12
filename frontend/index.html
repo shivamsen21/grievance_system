@@ -46,27 +46,11 @@
       <!-- ─── Citizen: Login Form ──────────────────────────────────── -->
       <form id="user-login-form" class="space-y-4">
 
-        <!-- Login method toggle (Email / Phone) -->
-        <div class="flex gap-1 p-1 rounded-xl" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);margin-bottom:.25rem;">
-          <button type="button" id="login-mode-email" class="tab-pill active" onclick="setLoginMode('email')">✉️ Email</button>
-          <button type="button" id="login-mode-phone" class="tab-pill" onclick="setLoginMode('phone')">📱 Phone</button>
-        </div>
-
-        <!-- Email field (shown by default) -->
+        <!-- Email field -->
         <div id="login-email-field">
           <label class="form-label" style="color:rgba(255,255,255,0.75);">Email address</label>
           <input type="email" id="login-email" placeholder="Email"
-            class="form-input" />
-        </div>
-
-        <!-- Phone field (hidden by default) -->
-        <div id="login-phone-field" style="display:none;">
-          <label class="form-label" style="color:rgba(255,255,255,0.75);">Phone number</label>
-          <div style="display:flex;gap:.5rem;">
-            <span style="display:inline-flex;align-items:center;padding:0 .875rem;background:#f0f4ff;border:1.5px solid #c7d2fe;border-radius:.75rem;color:#4f46e5;font-weight:600;font-size:.9rem;white-space:nowrap;">+91</span>
-            <input type="tel" id="login-phone" placeholder="Mobile No." pattern="[0-9]{10}"
-              class="form-input" style="flex:1;" />
-          </div>
+            class="form-input" required />
         </div>
 
         <div>
@@ -251,7 +235,6 @@
       }
     }
 
-    /* ── Login mode toggle: Email ↔ Phone ── */
     /* ── Show / hide password toggle ── */
     function togglePassword(inputId, showSvgId, hideSvgId) {
       const inp = document.getElementById(inputId);
@@ -287,35 +270,6 @@
 
     window.togglePassword = togglePassword;
 
-    let _loginMode = 'email';
-    function setLoginMode(mode) {
-      _loginMode = mode;
-      const emailField  = document.getElementById('login-email-field');
-      const phoneField  = document.getElementById('login-phone-field');
-      const emailInput  = document.getElementById('login-email');
-      const phoneInput  = document.getElementById('login-phone');
-      const btnEmail    = document.getElementById('login-mode-email');
-      const btnPhone    = document.getElementById('login-mode-phone');
-
-      if (mode === 'email') {
-        emailField.style.display = '';
-        phoneField.style.display = 'none';
-        emailInput.required = true;
-        phoneInput.required = false;
-        btnEmail.classList.add('active');
-        btnPhone.classList.remove('active');
-      } else {
-        emailField.style.display = 'none';
-        phoneField.style.display = '';
-        emailInput.required = false;
-        phoneInput.required = true;
-        btnPhone.classList.add('active');
-        btnEmail.classList.remove('active');
-      }
-    }
-
-    /* Expose mode to main.js */
-    window.getLoginMode = () => _loginMode;
   </script>
   <script type="module" src="./main.js"></script>
 </body>
