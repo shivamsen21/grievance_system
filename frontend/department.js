@@ -2,7 +2,13 @@ const API_URL = '/api'; // Vite proxy → localhost:5000 (works on LAN and ngrok
 
 document.addEventListener('DOMContentLoaded', () => {
   const deptData = JSON.parse(sessionStorage.getItem('grievance_dept') || 'null');
-  if (!deptData) return; // Will be redirected by HTML script
+  if (!deptData?.id) {
+    const listEl = document.getElementById('grievances-list');
+    if (listEl) {
+      listEl.innerHTML = `<p style="color:#f87171; text-align:center;">Department session is invalid. Please sign in again.</p>`;
+    }
+    return;
+  }
 
   const listEl = document.getElementById('grievances-list');
   const btnRefresh = document.getElementById('btn-refresh-reports');

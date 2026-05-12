@@ -201,10 +201,22 @@ router.get('/:id', async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/department/:deptId', async (req, res) => {
   try {
+    const { deptId } = req.params;
+
+    const { data: deptRow, error: deptErr } = await supabase
+      .from('departments')
+      .select('id, name')
+      .eq('id', deptId)
+      .single();
+
+    if (deptErr || !deptRow) {
+      return res.status(404).json({ error: 'Department not found' });
+    }
+
     const { data, error } = await supabase
       .from('complaints')
       .select('*')
-      .eq('department_id', req.params.deptId)
+      .or(`department_id.eq.${deptRow.id},department_name.eq.${deptRow.name}`)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
